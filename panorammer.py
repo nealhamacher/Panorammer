@@ -33,7 +33,7 @@ def matchKeypoints(kpsA, kpsB, featuresA, featuresB, match_type, ratio=0.75):
     
     return good_matches, H
 
-def stitch(imageA, imageB, match_type):
+def stitchOLD(imageA, imageB, match_type):
     result = []
     kpA, fA = detectAndDescribe(imageA)    
     kpB, fB = detectAndDescribe(imageB)
@@ -67,6 +67,7 @@ def stitch(imageA, imageB, match_type):
     imMatches = cv2.drawMatches(imageA, kpA, imageB, kpB, good_matches, None, flags=2)
     return (result, imMatches, imageBWarped, intersect_points)
 
+
 def getLayoutDetails(layout):
     width = 0
     height = 0
@@ -79,33 +80,145 @@ def getLayoutDetails(layout):
     return(width, height, centerPoint)
     
 
-def initResult(layout_h, layout_w, image):
+def initResult(layout_h, layout_w, image, colour_type):
     base_height = image.shape[0]
     base_width = image.shape[1]
     result_width = base_width * (layout_w + 1)
     result_height = base_height * (layout_h + 1)
-    result = np.zeros((result_height, result_width))
-
+    if(colour_type == 'rgb'):
+        result = np.zeros((result_height, result_width, 3))
+    else:
+        result = np.zeros((result_height, result_width))
     return result
 
-def placeCenterImage(result, img_center, layout_c):
+
+def placeCenterImage(result, img_center, layout_c, colour_type):
     start_row = img_center.shape[0]*layout_c[0]
     end_row = img_center.shape[0]+start_row
     start_col = img_center.shape[1]*layout_c[1]
     end_col = img_center.shape[1]+start_col
-    result[start_row:end_row,start_col:end_col]=img_center
+    if colour_type == "rgb":
+        result[start_row:end_row,start_col:end_col,0:3]=img_center
+    else:
+        result[start_row:end_row,start_col:end_col]=img_center
     return result
 
 
-def stitchNEW(images, layout, match_type):
+def stitchColour(result, imageB, match_type):
+    kpA, fA = detectAndDescribe(np.uint8(result))    
+    kpB, fB = detectAndDescribe(imageB)
+    good_matches, H = matchKeypoints(kpA, kpB, fA, fB, match_type)
+    
+    imageBWarped = cv2.warpPerspective(imageB,H,(result.shape[1],result.shape[0]))
+    intersect_points = []
+
+    for i in range(result.shape[0]):
+        has_intersected = False
+        for j in range(result.shape[1]):
+            for k in range(result.shape[2]):
+                if(imageBWarped[i][j][k] != 0 and result[i][j][k] == 0):
+                    if not has_intersected:
+                        intersect_points.append((j,i))
+                        has_intersected = True
+                    result[i][j][k] = imageBWarped[i][j][k]
+    return result
+
+
+def stitchGrey(result, imageB, match_type):
+    kpA, fA = detectAndDescribe(np.uint8(result))    
+    kpB, fB = detectAndDescribe(imageB)
+    good_matches, H = matchKeypoints(kpA, kpB, fA, fB, match_type)
+    
+    imageBWarped = cv2.warpPerspective(imageB,H,(result.shape[1],result.shape[0]))
+    intersect_points = []
+
+    for i in range(result.shape[0]):
+        has_intersected = False
+        for j in range(result.shape[1]):
+            if(imageBWarped[i][j] != 0 and result[i][j] == 0):
+                if not has_intersected:
+                    intersect_points.append((j,i))
+                    has_intersected = True
+                result[i][j] = imageBWarped[i][j]
+    return result
+
+
+def panoram(images, layout, colour_type, match_type):
+    #Check for valid colour type (rgb and grayscale only supported right now)
+    if colour_type not in ['rgb', 'gray', 'grey']:
+        raise ValueError("Invalid colour_type")
+    if colour_type == 'rgb':
+        stitchFunction = stitchColour
+    else:
+        stitchFunction = stitchGrey
+
+
+    #Find number of images wide, high, and center image in layout graph
+    #Use these to initalize result canvas
     layout_w, layout_h, layout_c = getLayoutDetails(layout)
-    result = initResult(layout_h, layout_w, images[0])
-    print(result.shape)
+    result = initResult(layout_h, layout_w, images[0], colour_type)
+
+    #Get center image and place it on the canvas
     idx_center = layout.index(layout_c)
     img_center = images[idx_center]
-    result = placeCenterImage(result, img_center, layout_c)
+    result = placeCenterImage(result, img_center, layout_c, colour_type)
 
+    #Find layout graph indices going left/right/up/down from center
+    first_above = layout_c[0] - 1
+    first_below = layout_c[0] + 1
+    first_left = layout_c[1] - 1
+    first_right = layout_c[1] + 1
+
+    #Stitch images to left of center
+    for i in range(first_left, -1, -1):
+        layout_pt = (layout_c[0], i)
+        idx = layout.index(layout_pt)
+        img = images[idx]
+        result = stitchFunction(result, img, match_type)
+    
+    #Stich images to right of center
+    for i in range(first_right, layout_w+1, 1):
+        layout_pt = (layout_c[0], i)
+        idx = layout.index(layout_pt)
+        img = images[idx]
+        result = stitchFunction(result, img, match_type)
+    
+    #Stitch images above center
+    for j in range(first_above, -1, -1):
+        layout_pt = (j, layout_c[1])
+        idx = layout.index(layout_pt)
+        img = images[idx]
+        result = stitchFunction(result, img, match_type)
+        for i in range(first_left, -1, -1):
+            layout_pt = (j, i)
+            idx = layout.index(layout_pt)
+            img = images[idx]
+            result = stitchFunction(result, img, match_type)
+        for i in range(first_right, layout_w+1, 1):
+            layout_pt = (j, i)
+            idx = layout.index(layout_pt)
+            img = images[idx]
+            result = stitchFunction(result, img, match_type)
+    
+    #Stitch images below center
+    for j in range(first_below, layout_h+1, 1):
+        layout_pt = (j, layout_c[1])
+        idx = layout.index(layout_pt)
+        img = images[idx]
+        result = stitchFunction(result, img, match_type)
+        for i in range(first_left, -1, -1):
+            layout_pt = (j, i)
+            idx = layout.index(layout_pt)
+            img = images[idx]
+            result = stitchFunction(result, img, match_type)
+        for i in range(first_right, layout_w+1, 1):
+            layout_pt = (j, i)
+            idx = layout.index(layout_pt)
+            img = images[idx]
+            result = stitchFunction(result, img, match_type)
+     
     return result
+
 
 def smoothIntersection(image, intersectpoints, k_size):
     for point in intersectpoints:
@@ -128,24 +241,39 @@ def smoothIntersection(image, intersectpoints, k_size):
         image[start_y:end_y,start_x:end_x] = blurred
     return image
 
-def main():
-    
-    im1 = cv2.imread('images/budapest1.jpg')
-    im2 = cv2.imread('images/budapest2.jpg')
-    im3 = cv2.imread('images/budapest3.jpg')
-    im4 = cv2.imread('images/budapest4.jpg')
-    im5 = cv2.imread('images/budapest5.jpg')
-    im6 = cv2.imread('images/budapest6.jpg')
-    images = [im1, im2, im3, im4, im5, im6]
-    layout = [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
-    for i in range(len(images)):
-        images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
-    result = stitchNEW(images, layout, 0)
 
+def main():
+    im1 = cv2.imread('images/macew1.jpg')
+    im2 = cv2.imread('images/macew3.jpg')
+    im3 = cv2.imread('images/macew4.jpg')
+    images = [im1, im2, im3]
+    layout = [(0,0),(0,1),(0,2)]
+
+    for i in range(len(images)):
+        images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+
+    img_colour = 'rgb'
+
+    # im1 = cv2.imread('images/budapest1.jpg')
+    # im2 = cv2.imread('images/budapest2.jpg')
+    # im3 = cv2.imread('images/budapest3.jpg')
+    # im4 = cv2.imread('images/budapest4.jpg')
+    # im5 = cv2.imread('images/budapest5.jpg')
+    # im6 = cv2.imread('images/budapest6.jpg')
+    # images = [im1, im2, im3, im4, im5, im6]
+    # layout = [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
+    # for i in range(len(images)):
+    #    images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+    
+    # img_colour = 'gray'
+
+    result = panoram(images, layout, img_colour, 0)
+    result = np.uint8(result)
     plt.figure(figsize=(15, 10))
-    plt.imshow(result,'gray')
+    plt.imshow(result) #FOR COLOUR IMAGES
+    # plt.imshow(result, 'gray') #FOR GRAYSCALE IMAGES
     plt.xticks([]), plt.yticks([])
-    plt.title("image 1")
+    plt.title("It's Pantastic!")
     plt.show()
     
 
@@ -154,7 +282,7 @@ def main():
     
     #imageA = cv2.cvtColor(imageA, cv2.COLOR_BGR2RGB)
     #imageB = cv2.cvtColor(imageB, cv2.COLOR_BGR2RGB)
-    #result,imMatches,imageBWarped,intersectPoints = stitch(imageA, imageB, 0)
+    #result,imMatches,imageBWarped,intersectPoints = stitchOLD(imageA, imageB, 0)
     
     '''
     plt.subplot(2,1,1)
@@ -201,4 +329,7 @@ def main():
     plt.title("Panorama - Smoothed")
     plt.show()
     '''
-main()
+
+###############################################################################
+if __name__ == "__main__":
+    main()
