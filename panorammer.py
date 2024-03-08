@@ -33,6 +33,9 @@ def matchKeypoints(kpsA, kpsB, featuresA, featuresB, match_type, ratio=0.75):
     
     return good_matches, H
 
+'''
+Legacy stitching function for reference
+'''
 def stitchOLD(imageA, imageB, match_type):
     result = []
     kpA, fA = detectAndDescribe(imageA)    
@@ -69,18 +72,23 @@ def stitchOLD(imageA, imageB, match_type):
 
 
 def getLayoutDetails(layout):
-    width = 0
+    #Find max row and column index, use result to find centermost point
     height = 0
+    width = 0
     for point in layout: 
         if point[0] > height:
             height = point[0]
         if point[1] > width:
             width = point[1]
     centerPoint = (height//2, width//2)
+    
     return(width, height, centerPoint)
     
-
+'''
+Detemines size of panorama image and initializes
+'''
 def initResult(layout_h, layout_w, image, colour_type):
+    #Find height and width of one image, use to find overall h, w and initialize
     base_height = image.shape[0]
     base_width = image.shape[1]
     result_width = base_width * (layout_w + 1)
@@ -91,7 +99,9 @@ def initResult(layout_h, layout_w, image, colour_type):
         result = np.zeros((result_height, result_width))
     return result
 
-
+'''
+Places centermost image in panorama on the canvas
+'''
 def placeCenterImage(result, img_center, layout_c, colour_type):
     start_row = img_center.shape[0]*layout_c[0]
     end_row = img_center.shape[0]+start_row
@@ -103,7 +113,9 @@ def placeCenterImage(result, img_center, layout_c, colour_type):
         result[start_row:end_row,start_col:end_col]=img_center
     return result
 
-
+'''
+Stiches rgb (or other 3 colour depth) images into the rgb result
+'''
 def stitchColour(result, imageB, match_type):
     kpA, fA = detectAndDescribe(np.uint8(result))    
     kpB, fB = detectAndDescribe(imageB)
@@ -123,7 +135,9 @@ def stitchColour(result, imageB, match_type):
                     result[i][j][k] = imageBWarped[i][j][k]
     return result
 
-
+'''
+Stitches a grayscale image into the grayscale result
+'''
 def stitchGrey(result, imageB, match_type):
     kpA, fA = detectAndDescribe(np.uint8(result))    
     kpB, fB = detectAndDescribe(imageB)
@@ -142,7 +156,14 @@ def stitchGrey(result, imageB, match_type):
                 result[i][j] = imageBWarped[i][j]
     return result
 
-
+'''
+Main panorama making function
+Params: images, a list of images of same type (height/width/colourscheme)
+        layout: paired list for images, showing row and column of image in final order
+        colour_type: cv2 colour scheme of image (rgb or grayscale)
+        match_type: 0 for brute force, 1 for k-nearest neighbours
+Returns: Panorama image
+'''
 def panoram(images, layout, colour_type, match_type):
     #Check for valid colour type (rgb and grayscale only supported right now)
     if colour_type not in ['rgb', 'gray', 'grey']:
@@ -184,35 +205,35 @@ def panoram(images, layout, colour_type, match_type):
         result = stitchFunction(result, img, match_type)
     
     #Stitch images above center
-    for j in range(first_above, -1, -1):
-        layout_pt = (j, layout_c[1])
+    for i in range(first_above, -1, -1):
+        layout_pt = (i, layout_c[1])
         idx = layout.index(layout_pt)
         img = images[idx]
         result = stitchFunction(result, img, match_type)
-        for i in range(first_left, -1, -1):
-            layout_pt = (j, i)
+        for j in range(first_left, -1, -1):
+            layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
             result = stitchFunction(result, img, match_type)
-        for i in range(first_right, layout_w+1, 1):
-            layout_pt = (j, i)
+        for j in range(first_right, layout_w+1, 1):
+            layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
             result = stitchFunction(result, img, match_type)
     
     #Stitch images below center
-    for j in range(first_below, layout_h+1, 1):
-        layout_pt = (j, layout_c[1])
+    for i in range(first_below, layout_h+1, 1):
+        layout_pt = (i, layout_c[1])
         idx = layout.index(layout_pt)
         img = images[idx]
         result = stitchFunction(result, img, match_type)
-        for i in range(first_left, -1, -1):
-            layout_pt = (j, i)
+        for j in range(first_left, -1, -1):
+            layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
             result = stitchFunction(result, img, match_type)
-        for i in range(first_right, layout_w+1, 1):
-            layout_pt = (j, i)
+        for j in range(first_right, layout_w+1, 1):
+            layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
             result = stitchFunction(result, img, match_type)
