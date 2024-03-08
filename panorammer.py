@@ -49,25 +49,22 @@ def stitch(imageA, imageB, match_type):
         for j in range(imageA.shape[1]):
             if(imageBWarped[i][j] != 0):
                 result[i][j] = imageA[i][j]/2 + imageBWarped[i][j]/2
-                if has_intersected == False:
+                if not has_intersected:
                     intersect_points.append((j,i))
                     has_intersected = True
             else:
                 result[i][j] = imageA[i][j]
+                
     for i in range(imageA.shape[0]):
         for j in range(imageA.shape[1],imageBWarped.shape[1]):
+                if(j==imageA.shape[1] and imageBWarped[i][j]!=0):
+                    intersect_points.append((j,i))
                 result[i][j] = imageBWarped[i][j]
-    
-    #result[:,:imageBWarped.shape[1]] = imageA
-    #result[:,imageBWarped.shape[1]:] = imageBWarped
     imMatches = cv2.drawMatches(imageA, kpA, imageB, kpB, good_matches, None, flags=2)
     return (result, imMatches, imageBWarped, intersect_points)
 
-def smooth(image, intersectpoints, k_size):
+def smoothIntersection(image, intersectpoints, k_size):
     for point in intersectpoints:
-        print(point)
-        print(image[point[1],point[0]])
-        print(image.shape)
         start_x = point[0]-2*k_size
         if start_x < 0:
             start_x = 0
@@ -85,7 +82,6 @@ def smooth(image, intersectpoints, k_size):
 
         blurred = cv2.GaussianBlur(image[start_y:end_y, start_x:end_x], (k_size,k_size), 0)
         image[start_y:end_y,start_x:end_x] = blurred
-        print(blurred)
     return image
 
 def main():
@@ -94,7 +90,6 @@ def main():
     im1 = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
     im2 = cv2.cvtColor(im2, cv2.COLOR_BGR2GRAY)
     result,imMatches,imageBWarped,intersectPoints = stitch(im1,im2, 0)
-
     '''
     plt.subplot(2,1,1)
     plt.imshow(im1, 'gray')
@@ -130,11 +125,11 @@ def main():
     plt.xticks([]), plt.yticks([])
     plt.title("Panorama")
     #plt.show()
-    resultSmooth = smooth(result, intersectPoints, 5)
+    resultSmooth = smoothIntersection(result, intersectPoints, 3)
     plt.subplot(2,1,2)
     plt.imshow(resultSmooth.astype(np.uint8),'gray')
     plt.xticks([]), plt.yticks([])
-    plt.title("Panorama - Smoother")
+    plt.title("Panorama - Smoothed")
     plt.show()
 
 main()
