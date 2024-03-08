@@ -189,7 +189,7 @@ def main():
     plt.figure(figsize=(15, 10))
     plt.imshow(result,'gray')
     plt.xticks([]), plt.yticks([])
-    plt.title("image 1")
+    plt.title("It's Pantastic!")
     plt.show()
     
 
