@@ -33,7 +33,7 @@ def matchKeypoints(kpsA, kpsB, featuresA, featuresB, match_type, ratio=0.75):
     
     return good_matches, H
 
-def stitch(imageA, imageB, match_type):
+def stitchOLD(imageA, imageB, match_type):
     result = []
     kpA, fA = detectAndDescribe(imageA)    
     kpB, fB = detectAndDescribe(imageB)
@@ -96,14 +96,58 @@ def placeCenterImage(result, img_center, layout_c):
     result[start_row:end_row,start_col:end_col]=img_center
     return result
 
+def stitchLeft(img_base, img_proj, result, match_type):
+    return result
 
-def stitchNEW(images, layout, match_type):
+
+def stitch(result, imageB, match_type):
+    kpA, fA = detectAndDescribe(np.uint8(result))    
+    kpB, fB = detectAndDescribe(imageB)
+    good_matches, H = matchKeypoints(kpA, kpB, fA, fB, match_type)
+    
+    imageBWarped = cv2.warpPerspective(imageB,H,(result.shape[1],result.shape[0]))
+    intersect_points = []
+
+    for i in range(result.shape[0]):
+        has_intersected = False
+        for j in range(result.shape[1]):
+            if(imageBWarped[i][j] != 0 and result[i][j] == 0):
+                if not has_intersected:
+                        intersect_points.append((j,i))
+                        has_intersected = True
+                result[i][j] = imageBWarped[i][j]
+    return result
+
+def panoram(images, layout, match_type):
     layout_w, layout_h, layout_c = getLayoutDetails(layout)
     result = initResult(layout_h, layout_w, images[0])
-    print(result.shape)
     idx_center = layout.index(layout_c)
     img_center = images[idx_center]
     result = placeCenterImage(result, img_center, layout_c)
+    first_up = layout_c[0] - 1
+    first_down = layout_c[0] + 1
+    first_left = layout_c[1] - 1
+    first_right = layout_c[1] + 1
+    if first_up >= 0:
+         layout_above = ((layout_c[0]-1, layout_c[1]))
+         idx_above = layout.index(layout_above)
+         img_above = images[idx_above]
+         result = stitch(result, img_above, match_type)
+    if first_up <= layout_h:
+         layout_below = ((layout_c[0]+1, layout_c[1]))
+         idx_below = layout.index(layout_below)
+         img_below = images[idx_below]
+         result = stitch(result, img_below, match_type)
+    if first_left >= 0:
+         layout_left = ((layout_c[0], layout_c[1]-1))
+         idx_left = layout.index(layout_left)
+         img_left = images[idx_left]
+         result = stitch(result, img_left, match_type)
+    if first_right <= layout_w:
+        layout_right = ((layout_c[0], layout_c[1]+1))
+        idx_right = layout.index(layout_right)
+        img_right = images[idx_right]
+        result = stitch(result, img_right, match_type)
 
     return result
 
@@ -140,7 +184,7 @@ def main():
     layout = [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
     for i in range(len(images)):
         images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
-    result = stitchNEW(images, layout, 0)
+    result = panoram(images, layout, 0)
 
     plt.figure(figsize=(15, 10))
     plt.imshow(result,'gray')
@@ -154,7 +198,7 @@ def main():
     
     #imageA = cv2.cvtColor(imageA, cv2.COLOR_BGR2RGB)
     #imageB = cv2.cvtColor(imageB, cv2.COLOR_BGR2RGB)
-    #result,imMatches,imageBWarped,intersectPoints = stitch(imageA, imageB, 0)
+    #result,imMatches,imageBWarped,intersectPoints = stitchOLD(imageA, imageB, 0)
     
     '''
     plt.subplot(2,1,1)
