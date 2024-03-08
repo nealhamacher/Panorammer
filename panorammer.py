@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def detectAndDescribe(image):
     sift = cv2.SIFT_create()
     kps, features = sift.detectAndCompute(image, None)
@@ -17,11 +18,13 @@ def matchKeypoints(kpsA, kpsB, featuresA, featuresB, match_type, ratio=0.75):
         matches = bfMatcher.match(featuresA, featuresB)
         matches = sorted(matches, key = lambda x:x.distance)
         n = int(0.15*len(matches))
+        print(n)
         good_matches = matches[:n]
     
     elif match_type == 1:
         knnMatches = bfMatcher.knnMatch(featuresA, featuresB, 2)
         good_matches = []
+        print(len(knnMatches))
         for i,j in knnMatches:
             if i.distance < ratio*j.distance:
                 good_matches.append(i)
@@ -264,28 +267,40 @@ def smoothIntersection(image, intersectpoints, k_size):
 
 
 def main():
-    im1 = cv2.imread('images/macew1.jpg')
-    im2 = cv2.imread('images/macew3.jpg')
-    im3 = cv2.imread('images/macew4.jpg')
-    images = [im1, im2, im3]
-    layout = [(0,0),(0,1),(0,2)]
-
-    for i in range(len(images)):
-        images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
-
-    img_colour = 'rgb'
-
-    # im1 = cv2.imread('images/budapest1.jpg')
-    # im2 = cv2.imread('images/budapest2.jpg')
-    # im3 = cv2.imread('images/budapest3.jpg')
-    # im4 = cv2.imread('images/budapest4.jpg')
-    # im5 = cv2.imread('images/budapest5.jpg')
-    # im6 = cv2.imread('images/budapest6.jpg')
-    # images = [im1, im2, im3, im4, im5, im6]
-    # layout = [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
+    # MACEWAN IMAGES
+    # im1 = cv2.imread('images/macew1.jpg')
+    # im2 = cv2.imread('images/macew3.jpg')
+    # im3 = cv2.imread('images/macew4.jpg')
+    # images = [im1, im2, im3]
+    # layout = [(0,0),(0,1),(0,2)]
     # for i in range(len(images)):
-    #    images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
-    
+    #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+    # img_colour = 'rgb'
+
+    #BUDAPEST MAP IMAGES 
+    im1 = cv2.imread('images/budapest1.jpg')
+    im2 = cv2.imread('images/budapest2.jpg')
+    im3 = cv2.imread('images/budapest3.jpg')
+    im4 = cv2.imread('images/budapest4.jpg')
+    im5 = cv2.imread('images/budapest5.jpg')
+    im6 = cv2.imread('images/budapest6.jpg')
+    images = [im1, im2, im3, im4, im5, im6]
+    layout = [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
+    for i in range(len(images)):
+       images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+    img_colour = 'gray'
+
+    # # BOAT IMAGES - WARNING: takes a long time to run!
+    # im1 = cv2.imread('images/boat1.jpg')
+    # im2 = cv2.imread('images/boat2.jpg')
+    # im3 = cv2.imread('images/boat3.jpg')
+    # im4 = cv2.imread('images/boat4.jpg')
+    # im5 = cv2.imread('images/boat5.jpg')
+    # im6 = cv2.imread('images/boat6.jpg')
+    # images = [im2, im5, im1, im3, im6, im4]
+    # layout = [(0,1), (0,4), (0,0), (0,2), (0,5), (0,3)]
+    # for i in range(len(images)):
+    #      images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
     # img_colour = 'gray'
 
     result = panoram(images, layout, img_colour, 0)
