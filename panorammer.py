@@ -40,28 +40,72 @@ def stitch(imageA, imageB, match_type):
     good_matches, H = matchKeypoints(kpA, kpB, fA, fB, match_type)
     
     imageBWarped = cv2.warpPerspective(imageB,H,(imageA.shape[1]*2,imageA.shape[0]))
-    result = np.zeros((imageA.shape[0],2*imageA.shape[1]))
-
+    result = np.zeros((imageA.shape[0],2*imageA.shape[1],imageA.shape[2]))
+    print(result.shape)
     intersect_points = []
 
     for i in range(imageA.shape[0]):
         has_intersected = False
         for j in range(imageA.shape[1]):
-            if(imageBWarped[i][j] != 0):
-                result[i][j] = imageA[i][j]/2 + imageBWarped[i][j]/2
+            if(imageBWarped[i][j][0] != 0):
                 if not has_intersected:
-                    intersect_points.append((j,i))
-                    has_intersected = True
-            else:
-                result[i][j] = imageA[i][j]
+                        intersect_points.append((j,i))
+                        has_intersected = True
+            for k in range(imageA.shape[2]):
+                if(imageBWarped[i][j][k] != 0):
+                    result[i][j][k] = imageA[i][j][k]/2 + imageBWarped[i][j][k]/2
+                else:
+                    result[i][j][k] = imageA[i][j][k]
                 
     for i in range(imageA.shape[0]):
         for j in range(imageA.shape[1],imageBWarped.shape[1]):
-                if(j==imageA.shape[1] and imageBWarped[i][j]!=0):
-                    intersect_points.append((j,i))
-                result[i][j] = imageBWarped[i][j]
+            if(j==imageA.shape[1] and imageBWarped[i][j][0]!=0):
+                intersect_points.append((j,i))
+            for k in range(imageA.shape[2]):
+                result[i][j][k] = imageBWarped[i][j][k]
+
     imMatches = cv2.drawMatches(imageA, kpA, imageB, kpB, good_matches, None, flags=2)
     return (result, imMatches, imageBWarped, intersect_points)
+
+def getLayoutDetails(layout):
+    width = 0
+    height = 0
+    for point in layout: 
+        if point[0] > height:
+            height = point[0]
+        if point[1] > width:
+            width = point[1]
+    centerPoint = (height//2, width//2)
+    return(width, height, centerPoint)
+    
+
+def initResult(layout_h, layout_w, image):
+    base_height = image.shape[0]
+    base_width = image.shape[1]
+    result_width = base_width * (layout_w + 1)
+    result_height = base_height * (layout_h + 1)
+    result = np.zeros((result_height, result_width))
+
+    return result
+
+def placeCenterImage(result, img_center, layout_c):
+    start_row = img_center.shape[0]*layout_c[0]
+    end_row = img_center.shape[0]+start_row
+    start_col = img_center.shape[1]*layout_c[1]
+    end_col = img_center.shape[1]+start_col
+    result[start_row:end_row,start_col:end_col]=img_center
+    return result
+
+
+def stitchNEW(images, layout, match_type):
+    layout_w, layout_h, layout_c = getLayoutDetails(layout)
+    result = initResult(layout_h, layout_w, images[0])
+    print(result.shape)
+    idx_center = layout.index(layout_c)
+    img_center = images[idx_center]
+    result = placeCenterImage(result, img_center, layout_c)
+
+    return result
 
 def smoothIntersection(image, intersectpoints, k_size):
     for point in intersectpoints:
@@ -85,11 +129,33 @@ def smoothIntersection(image, intersectpoints, k_size):
     return image
 
 def main():
-    im1 = cv2.imread('images/macew1.jpg')
-    im2 = cv2.imread('images/macew7.jpg')
-    im1 = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
-    im2 = cv2.cvtColor(im2, cv2.COLOR_BGR2GRAY)
-    result,imMatches,imageBWarped,intersectPoints = stitch(im1,im2, 0)
+    
+    im1 = cv2.imread('images/budapest1.jpg')
+    im2 = cv2.imread('images/budapest2.jpg')
+    im3 = cv2.imread('images/budapest3.jpg')
+    im4 = cv2.imread('images/budapest4.jpg')
+    im5 = cv2.imread('images/budapest5.jpg')
+    im6 = cv2.imread('images/budapest6.jpg')
+    images = [im1, im2, im3, im4, im5, im6]
+    layout = [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
+    for i in range(len(images)):
+        images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+    result = stitchNEW(images, layout, 0)
+
+    plt.figure(figsize=(15, 10))
+    plt.imshow(result,'gray')
+    plt.xticks([]), plt.yticks([])
+    plt.title("image 1")
+    plt.show()
+    
+
+    #imageA = cv2.imread('images/macew1.jpg')
+    #imageB = cv2.imread('images/macew7.jpg')
+    
+    #imageA = cv2.cvtColor(imageA, cv2.COLOR_BGR2RGB)
+    #imageB = cv2.cvtColor(imageB, cv2.COLOR_BGR2RGB)
+    #result,imMatches,imageBWarped,intersectPoints = stitch(imageA, imageB, 0)
+    
     '''
     plt.subplot(2,1,1)
     plt.imshow(im1, 'gray')
@@ -118,6 +184,9 @@ def main():
     plt.title("Matches")
     plt.show()
     '''
+
+    '''
+    #result = cv2.cvtColor(np.float32(result), cv2.COLOR_GRAY2BGR)
     plt.figure(figsize=(15, 10))
     plt.subplot(2,1,1)
 
@@ -131,5 +200,5 @@ def main():
     plt.xticks([]), plt.yticks([])
     plt.title("Panorama - Smoothed")
     plt.show()
-
+    '''
 main()
