@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def detectAndDescribe(image):
     sift = cv2.SIFT_create()
     kps, features = sift.detectAndCompute(image, None)
@@ -264,40 +265,55 @@ def smoothIntersection(image, intersectpoints, k_size):
 
 
 def main():
+    # MACEWAN IMAGES
     im1 = cv2.imread('images/macew1.jpg')
     im2 = cv2.imread('images/macew3.jpg')
     im3 = cv2.imread('images/macew4.jpg')
-    images = [im1, im2, im3]
-    layout = [(0,0),(0,1),(0,2)]
-
+    images = [im2, im1, im3]
+    layout = [(0,1),(0,0),(0,2)]
     for i in range(len(images)):
         images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
-
     img_colour = 'rgb'
 
+    #BUDAPEST MAP IMAGES 
     # im1 = cv2.imread('images/budapest1.jpg')
     # im2 = cv2.imread('images/budapest2.jpg')
     # im3 = cv2.imread('images/budapest3.jpg')
     # im4 = cv2.imread('images/budapest4.jpg')
     # im5 = cv2.imread('images/budapest5.jpg')
     # im6 = cv2.imread('images/budapest6.jpg')
-    # images = [im1, im2, im3, im4, im5, im6]
-    # layout = [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
+    # images = [im4, im5, im2, im6, im1, im3]
+    # layout = [(1,0),(1,1),(0,1),(1,2),(0,0),(0,2)]
     # for i in range(len(images)):
     #    images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
-    
+    # img_colour = 'gray'
+
+    # # BOAT IMAGES - WARNING: takes a long time to run!
+    # im1 = cv2.imread('images/boat1.jpg')
+    # im2 = cv2.imread('images/boat2.jpg')
+    # im3 = cv2.imread('images/boat3.jpg')
+    # im4 = cv2.imread('images/boat4.jpg')
+    # im5 = cv2.imread('images/boat5.jpg')
+    # im6 = cv2.imread('images/boat6.jpg')
+    # images = [im2, im5, im1, im3, im6, im4]
+    # layout = [(0,1), (0,4), (0,0), (0,2), (0,5), (0,3)]
+    # for i in range(len(images)):
+    #      images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
     # img_colour = 'gray'
 
     result = panoram(images, layout, img_colour, 0)
     result = np.uint8(result)
     plt.figure(figsize=(15, 10))
-    plt.imshow(result) #FOR COLOUR IMAGES
-    # plt.imshow(result, 'gray') #FOR GRAYSCALE IMAGES
+
+    print(result.ndim)
+    if (result.ndim == 2):
+        plt.imshow(result, 'gray') #FOR GRAYSCALE IMAGES
+    elif (result.ndim == 3):
+        plt.imshow(result) #FOR COLOUR IMAGES
     plt.xticks([]), plt.yticks([])
     plt.title("It's Pantastic!")
     plt.show()
     
-
     #imageA = cv2.imread('images/macew1.jpg')
     #imageB = cv2.imread('images/macew7.jpg')
     
@@ -305,6 +321,7 @@ def main():
     #imageB = cv2.cvtColor(imageB, cv2.COLOR_BGR2RGB)
     #result,imMatches,imageBWarped,intersectPoints = stitchOLD(imageA, imageB, 0)
     
+    #LEGACY CODE - SHOWING MATCHES, PRE-STICHED PROJECTIONS - FOR REFERENCE MAY BE USEFUL IN DEBUGGING
     '''
     plt.subplot(2,1,1)
     plt.imshow(im1, 'gray')
