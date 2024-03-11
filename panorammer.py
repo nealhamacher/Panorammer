@@ -103,10 +103,10 @@ def initResult(layout_h, layout_w, image, colour_type):
 '''
 Places centermost image in panorama on the canvas
 '''
-def placeCenterImage(result, img_center, layout_c, colour_type):
-    start_row = img_center.shape[0]*layout_c[0]
+def placeCenterImage(result, img_center, layout_pt_c, colour_type):
+    start_row = img_center.shape[0]*layout_pt_c[0]
     end_row = img_center.shape[0]+start_row
-    start_col = img_center.shape[1]*layout_c[1]
+    start_col = img_center.shape[1]*layout_pt_c[1]
     end_col = img_center.shape[1]+start_col
     if colour_type == "rgb":
         result[start_row:end_row,start_col:end_col,0:3]=img_center
@@ -176,38 +176,36 @@ def panoram(images, layout, colour_type, match_type):
 
 
     #Find number of images wide, high, and center image in layout graph
-    #Use these to initalize result canvas
-    layout_w, layout_h, layout_c = getLayoutDetails(layout)
-    result = initResult(layout_h, layout_w, images[0], colour_type)
-
-    #Get center image and place it on the canvas
-    idx_center = layout.index(layout_c)
+    #Use these to initalize result canvas and place center image
+    layout_w, layout_h, layout_pt_c = getLayoutDetails(layout)
+    idx_center = layout.index(layout_pt_c)
     img_center = images[idx_center]
-    result = placeCenterImage(result, img_center, layout_c, colour_type)
+    result = initResult(layout_h, layout_w, img_center, colour_type)
+    result = placeCenterImage(result, img_center, layout_pt_c, colour_type)
 
     #Find layout graph indices going left/right/up/down from center
-    first_above = layout_c[0] - 1
-    first_below = layout_c[0] + 1
-    first_left = layout_c[1] - 1
-    first_right = layout_c[1] + 1
+    first_above = layout_pt_c[0] - 1
+    first_below = layout_pt_c[0] + 1
+    first_left = layout_pt_c[1] - 1
+    first_right = layout_pt_c[1] + 1
 
     #Stitch images to left of center
     for i in range(first_left, -1, -1):
-        layout_pt = (layout_c[0], i)
+        layout_pt = (layout_pt_c[0], i)
         idx = layout.index(layout_pt)
         img = images[idx]
         result = stitchFunction(result, img, match_type)
     
     #Stich images to right of center
     for i in range(first_right, layout_w+1, 1):
-        layout_pt = (layout_c[0], i)
+        layout_pt = (layout_pt_c[0], i)
         idx = layout.index(layout_pt)
         img = images[idx]
         result = stitchFunction(result, img, match_type)
     
     #Stitch images above center
     for i in range(first_above, -1, -1):
-        layout_pt = (i, layout_c[1])
+        layout_pt = (i, layout_pt_c[1])
         idx = layout.index(layout_pt)
         img = images[idx]
         result = stitchFunction(result, img, match_type)
@@ -224,7 +222,7 @@ def panoram(images, layout, colour_type, match_type):
     
     #Stitch images below center
     for i in range(first_below, layout_h+1, 1):
-        layout_pt = (i, layout_c[1])
+        layout_pt = (i, layout_pt_c[1])
         idx = layout.index(layout_pt)
         img = images[idx]
         result = stitchFunction(result, img, match_type)
@@ -266,27 +264,27 @@ def smoothIntersection(image, intersectpoints, k_size):
 
 def main():
     # MACEWAN IMAGES
-    im1 = cv2.imread('images/macew1.jpg')
-    im2 = cv2.imread('images/macew3.jpg')
-    im3 = cv2.imread('images/macew4.jpg')
-    images = [im2, im1, im3]
-    layout = [(0,1),(0,0),(0,2)]
-    for i in range(len(images)):
-        images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
-    img_colour = 'rgb'
+    # im1 = cv2.imread('images/macew1.jpg')
+    # im2 = cv2.imread('images/macew3.jpg')
+    # im3 = cv2.imread('images/macew4.jpg')
+    # images = [im2, im1, im3]
+    # layout = [(0,1),(0,0),(0,2)]
+    # for i in range(len(images)):
+    #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+    # img_colour = 'rgb'
 
     #BUDAPEST MAP IMAGES 
-    # im1 = cv2.imread('images/budapest1.jpg')
-    # im2 = cv2.imread('images/budapest2.jpg')
-    # im3 = cv2.imread('images/budapest3.jpg')
-    # im4 = cv2.imread('images/budapest4.jpg')
-    # im5 = cv2.imread('images/budapest5.jpg')
-    # im6 = cv2.imread('images/budapest6.jpg')
-    # images = [im4, im5, im2, im6, im1, im3]
-    # layout = [(1,0),(1,1),(0,1),(1,2),(0,0),(0,2)]
-    # for i in range(len(images)):
-    #    images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
-    # img_colour = 'gray'
+    im1 = cv2.imread('images/budapest1.jpg')
+    im2 = cv2.imread('images/budapest2.jpg')
+    im3 = cv2.imread('images/budapest3.jpg')
+    im4 = cv2.imread('images/budapest4.jpg')
+    im5 = cv2.imread('images/budapest5.jpg')
+    im6 = cv2.imread('images/budapest6.jpg')
+    images = [im4, im5, im2, im6, im1, im3]
+    layout = [(1,0),(1,1),(0,1),(1,2),(0,0),(0,2)]
+    for i in range(len(images)):
+       images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+    img_colour = 'gray'
 
     # # BOAT IMAGES - WARNING: takes a long time to run!
     # im1 = cv2.imread('images/boat1.jpg')
@@ -301,7 +299,7 @@ def main():
     #      images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
     # img_colour = 'gray'
 
-    result = panoram(images, layout, img_colour, 0)
+    result = panoram(images, layout, img_colour, 1)
     result = np.uint8(result)
     plt.figure(figsize=(15, 10))
 
