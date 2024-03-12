@@ -421,7 +421,7 @@ def smoothIntersection(image, intersectpoints, k_size):
 def main():
     # MACEWAN IMAGES
     images = []
-    mode = 2
+    mode = 4
     if mode == 0:
         im1 = cv2.imread('images/macew1.jpg')
         im2 = cv2.imread('images/macew3.jpg')
@@ -461,8 +461,19 @@ def main():
         images = [im2, im5, im1, im3, im6, im4]
     # layout = [(0,1), (0,4), (0,0), (0,2), (0,5), (0,3)]
         for i in range(len(images)):
-            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
         img_colour = 'gray'
+
+    if mode == 3:
+        im1 = cv2.imread('images/seoul1.jpg')
+        im2 = cv2.imread('images/seoul2.jpg')
+        im3 = cv2.imread('images/seoul3.jpg')
+        images = [im3, im2, im1]
+        for i in range(len(images)):
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+        img_colour = 'rgb'
+
+
 
     layout = createImageAlignments(images)
     print(layout)
