@@ -2,6 +2,162 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
+def anyAboveOrBelow(links):
+    for i in range(len(links)):
+        if links[i] != None:
+            if links[i][0] == 1:
+                return True
+            if links[i][2] == 1:
+                return True
+    return False
+def findImageAlignment(imageA, imageB):
+    kps1, features1 = detectAndDescribe(imageA)
+    kps2, features2 = detectAndDescribe(imageB)
+
+    matches, temp, pts_source, pts_dst = matchKeypoints(kps1, kps2, features1, features2, 1)
+
+    if (len(matches) < 200):
+        return None
+    #FIND X ALIGN
+    h1, w1 = imageA.shape[:2]
+    x1_mid = w1/2
+    y1_mid = h1/2
+
+    h2, w2 = imageB.shape[:2]
+    x2_mid = w2/2
+    y2_mid = h2/2
+
+    aveDistCenterx1 = 0
+    aveDistCentery1 = 0
+    aveDistCenterx2 = 0
+    aveDistCentery2 = 0
+
+    # Find aveage distance of feature points
+    for i in range(len(pts_source)):
+        aveDistCenterx1 = aveDistCenterx1 + pts_source[i][0][0] - x1_mid
+        aveDistCentery1 = aveDistCentery1 + pts_source[i][0][1] - y1_mid
+        aveDistCenterx2 = aveDistCenterx2 + pts_dst[i][0][0] - x2_mid
+        aveDistCentery2 = aveDistCentery2 + pts_dst[i][0][1] - y2_mid
+
+    aveDistCenterx1 = aveDistCenterx1/len(pts_source)
+    aveDistCentery1 = aveDistCentery1/len(pts_source)
+    aveDistCenterx2 = aveDistCenterx2/len(pts_source)
+    aveDistCentery2 = aveDistCentery2/len(pts_source)
+
+    #If the average keypoint area is within 40% they are considered alined
+    # -1 = left/above, 0 = same, 1 = right/below
+    x_align, y_align = 0, 0
+    x_dist = aveDistCenterx1 - aveDistCenterx2
+    if abs(x_dist) < 0.2 * (w1 + w2)/2:
+        x_align = 0
+    elif (x_dist) > 0:
+        x_align = -1
+    else:
+        x_align = 1
+
+    # If the average keypoint location is within 40% they are considered aligned
+    # -1 = left/above, 0 = same, 1 = right/below
+    y_dist = aveDistCentery1 - aveDistCentery2
+    if abs(y_dist) < 0.2 * (h1 + h2) / 2:
+        y_align = 0
+    elif (y_dist) > 0:
+        y_align = -1
+    else:
+        y_align = 1
+
+    return y_align, abs(y_dist), x_align, abs(x_dist)
+
+
+def layoutGoRight(layout, imageLinks, current_index, current_location):
+    min_dist = 9999999
+    min_index = current_index
+    found_one = False
+    for i in range(len(imageLinks[current_index])):
+        if (imageLinks[current_index][i] is not None
+                and imageLinks[current_index][i][2] == -1
+                and imageLinks[current_index][i][0] == 0):
+
+
+            if(imageLinks[current_index][i][3] < min_dist):
+                min_dist = imageLinks[current_index][i][3]
+                min_index = i
+                found_one = True
+
+    if found_one:
+        createLayout(layout, imageLinks, min_index, (current_location[0],
+                                                                current_location[1] + 1))
+    return
+def layoutGoDown(layout, imageLinks, current_index, current_location):
+    min_dist = 9999999
+    min_index = current_index
+    found_one = False
+    for i in range(len(imageLinks[current_index])):
+        if (imageLinks[current_index][i] is not None
+                and imageLinks[current_index][i][0] == -1
+                and imageLinks[current_index][i][2] == 0):
+
+            if (imageLinks[current_index][i][1] < min_dist):
+                min_dist = imageLinks[current_index][i][1]
+                min_index = i
+                found_one = True
+
+    if found_one:
+        createLayout(layout, imageLinks, min_index, (current_location[0] + 1,
+                                                     current_location[1]))
+    return
+
+
+# Starts at the the top left and recursively moves down to bottom right
+def createLayout(layout, imageLinks, current_index, current_location):
+    layout[current_index] = tuple((current_location[0], current_location[1]))
+    # Go right
+    layoutGoRight(layout, imageLinks, current_index, current_location)
+    # Go down
+    layoutGoDown(layout, imageLinks, current_index, current_location)
+
+
+def createImageAlignments(images):
+    # This is not efficient, it pointless compares an images key points to itself.
+    image_links = []
+    for i in range(len(images)):
+        cur_links = []
+        for j in range(len(images)):
+
+            if j > i:
+                cur_links.append(findImageAlignment(images[i], images[j]))
+            elif j < i:
+                if image_links[j][i] != None:
+                    cur_links.append((image_links[j][i][0] * -1,
+                                      image_links[j][i][1],
+                                      image_links[j][i][2] * -1,
+                                      image_links[j][i][3]))
+                else:
+                    cur_links.append(None)
+            else:
+                cur_links.append((0, 0, 0, 0))
+
+        image_links.append(cur_links)
+
+    #Find Top Left Image
+    cur_links = image_links[0]
+    top_left_index = 0
+    while anyAboveOrBelow(cur_links):
+        for i in range(len(cur_links)):
+            if cur_links[i] != None:
+                if cur_links[i][0] == 1:
+                    cur_links = image_links[i]
+                    top_left_index = i
+                if cur_links[i][2] == 1:
+                    cur_links = image_links[i]
+                    top_left_index = i
+
+    layout = np.full(shape=(len(images), 2), fill_value=(0, 0))
+    createLayout(layout, image_links, top_left_index, (0, 0))
+    layout_list = layout.tolist()
+    for i in range(len(layout_list)):
+        layout_list[i] = tuple(layout_list[i])
+    return layout_list
+
 
 def detectAndDescribe(image):
     sift = cv2.SIFT_create()
@@ -32,7 +188,7 @@ def matchKeypoints(kpsA, kpsB, featuresA, featuresB, match_type, ratio=0.75):
     
     H, mask = cv2.findHomography(pts_dest, pts_source, cv2.RANSAC, 5.0)
     
-    return good_matches, H
+    return good_matches, H, pts_source, pts_dest
 
 '''
 Legacy stitching function for reference
@@ -120,7 +276,7 @@ Stiches rgb (or other 3 colour depth) images into the rgb result
 def stitchColour(result, imageB, match_type):
     kpA, fA = detectAndDescribe(np.uint8(result))    
     kpB, fB = detectAndDescribe(imageB)
-    good_matches, H = matchKeypoints(kpA, kpB, fA, fB, match_type)
+    good_matches, H, temp1, temp2 = matchKeypoints(kpA, kpB, fA, fB, match_type)
     
     imageBWarped = cv2.warpPerspective(imageB,H,(result.shape[1],result.shape[0]))
     intersect_points = []
@@ -142,7 +298,7 @@ Stitches a grayscale image into the grayscale result
 def stitchGrey(result, imageB, match_type):
     kpA, fA = detectAndDescribe(np.uint8(result))    
     kpB, fB = detectAndDescribe(imageB)
-    good_matches, H = matchKeypoints(kpA, kpB, fA, fB, match_type)
+    good_matches, H, temp1, temp2 = matchKeypoints(kpA, kpB, fA, fB, match_type)
     
     imageBWarped = cv2.warpPerspective(imageB,H,(result.shape[1],result.shape[0]))
     intersect_points = []
@@ -264,41 +420,52 @@ def smoothIntersection(image, intersectpoints, k_size):
 
 def main():
     # MACEWAN IMAGES
-    # im1 = cv2.imread('images/macew1.jpg')
-    # im2 = cv2.imread('images/macew3.jpg')
-    # im3 = cv2.imread('images/macew4.jpg')
-    # images = [im2, im1, im3]
+    images = []
+    mode = 2
+    if mode == 0:
+        im1 = cv2.imread('images/macew1.jpg')
+        im2 = cv2.imread('images/macew3.jpg')
+        im3 = cv2.imread('images/macew4.jpg')
+        images = [im2, im1, im3]
     # layout = [(0,1),(0,0),(0,2)]
-    # for i in range(len(images)):
-    #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
-    # img_colour = 'rgb'
+        for i in range(len(images)):
+             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+        img_colour = 'rgb'
 
+    if mode == 1:
     #BUDAPEST MAP IMAGES 
-    im1 = cv2.imread('images/budapest1.jpg')
-    im2 = cv2.imread('images/budapest2.jpg')
-    im3 = cv2.imread('images/budapest3.jpg')
-    im4 = cv2.imread('images/budapest4.jpg')
-    im5 = cv2.imread('images/budapest5.jpg')
-    im6 = cv2.imread('images/budapest6.jpg')
-    images = [im4, im5, im2, im6, im1, im3]
-    layout = [(1,0),(1,1),(0,1),(1,2),(0,0),(0,2)]
-    for i in range(len(images)):
-       images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
-    img_colour = 'gray'
+        im1 = cv2.imread('images/budapest1.jpg')
+        im2 = cv2.imread('images/budapest2.jpg')
+        im3 = cv2.imread('images/budapest3.jpg')
+        im4 = cv2.imread('images/budapest4.jpg')
+        im5 = cv2.imread('images/budapest5.jpg')
+        im6 = cv2.imread('images/budapest6.jpg')
+        images = [im4, im5, im2, im6, im1, im3]
 
-    # # BOAT IMAGES - WARNING: takes a long time to run!
-    # im1 = cv2.imread('images/boat1.jpg')
-    # im2 = cv2.imread('images/boat2.jpg')
-    # im3 = cv2.imread('images/boat3.jpg')
-    # im4 = cv2.imread('images/boat4.jpg')
-    # im5 = cv2.imread('images/boat5.jpg')
-    # im6 = cv2.imread('images/boat6.jpg')
-    # images = [im2, im5, im1, im3, im6, im4]
+    #layout = [(1, 0), (1, 1), (0, 1), (1, 2), (0, 0), (0, 2)]
+
+
+
+        for i in range(len(images)):
+           images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+        img_colour = 'gray'
+
+    if mode == 2:
+        # # BOAT IMAGES - WARNING: takes a long time to run!
+        im1 = cv2.imread('images/boat1.jpg')
+        im2 = cv2.imread('images/boat2.jpg')
+        im3 = cv2.imread('images/boat3.jpg')
+        im4 = cv2.imread('images/boat4.jpg')
+        im5 = cv2.imread('images/boat5.jpg')
+        im6 = cv2.imread('images/boat6.jpg')
+        images = [im2, im5, im1, im3, im6, im4]
     # layout = [(0,1), (0,4), (0,0), (0,2), (0,5), (0,3)]
-    # for i in range(len(images)):
-    #      images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
-    # img_colour = 'gray'
+        for i in range(len(images)):
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+        img_colour = 'gray'
 
+    layout = createImageAlignments(images)
+    print(layout)
     result = panoram(images, layout, img_colour, 1)
     result = np.uint8(result)
     plt.figure(figsize=(15, 10))
