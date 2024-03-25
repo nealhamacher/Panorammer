@@ -254,7 +254,8 @@ def matchKeypoints(kpsA, kpsB, featuresA, featuresB, match_type, ratio=0.75):
 
     return good_matches, H, pts_source, pts_dest
 
-
+'''
+Recursively finds the '''
 def findCropCol(image, column, direction, delta):
     print(column)
     if delta == 1 or delta == 0:
@@ -272,6 +273,24 @@ def findCropCol(image, column, direction, delta):
     new_delta = delta//2
     return (findCropCol(image, new_col, direction, new_delta))
 
+'''
+Recursively finds the first row with image data
+'''
+def findCropRow(image, row, direction, delta):
+    if delta == 1 or delta == 0:
+        return row
+    outsideImage = True
+    for column in range(0,image.shape[1]): # If any pixels are non-zero (not all black)
+        if image[row, column] != 0:
+            print("["+str(row)+","+str(column)+"]: "+str(image[row,column]))
+            outsideImage = False
+            break
+    if not outsideImage:
+        new_row = row + (direction * delta)
+    else:
+        new_row = row + (-direction * delta)
+    new_delta = delta//2
+    return (findCropRow(image, new_row, direction, new_delta))
 
 def autoCropper(image):
     center_col = image.shape[1]//2
@@ -282,8 +301,10 @@ def autoCropper(image):
     end_col = findCropCol(image, center_col, 1, center_col//2)
     print("Start col " + str(start_col))
     print("End col " + str(end_col))
-    result = np.zeros((image.shape[0],end_col-start_col))
-    result[:,:] = image[:,start_col:end_col]
+    start_row = findCropRow(image, center_row, -1, center_row//2)
+    end_row = findCropRow(image, center_row, 1, center_row//2)
+    result = np.zeros((end_row-start_row, end_col-start_col))
+    result[:,:] = image[start_row:end_row, start_col:end_col]
     return result
 
 
