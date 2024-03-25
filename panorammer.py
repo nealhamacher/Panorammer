@@ -255,44 +255,37 @@ def matchKeypoints(kpsA, kpsB, featuresA, featuresB, match_type, ratio=0.75):
     return good_matches, H, pts_source, pts_dest
 
 
-'''
-Legacy stitching function for reference
-'''
+def findCropCol(image, column, direction, delta):
+    print(column)
+    if delta == 1 or delta == 0:
+        return column
+    outsideImage = True
+    for row in range(0,image.shape[0]): # If any pixels are non-zero (not all black)
+        if image[row, column] != 0:
+            print("["+str(row)+","+str(column)+"]: "+str(image[row,column]))
+            outsideImage = False
+            break
+    if not outsideImage:
+        new_col = column + (direction * delta)
+    else:
+        new_col = column + (-direction * delta)
+    new_delta = delta//2
+    return (findCropCol(image, new_col, direction, new_delta))
 
 
-def stitchOLD(imageA, imageB, match_type):
-    result = []
-    kpA, fA = detectAndDescribe(imageA)
-    kpB, fB = detectAndDescribe(imageB)
-    good_matches, H = matchKeypoints(kpA, kpB, fA, fB, match_type)
+def autoCropper(image):
+    center_col = image.shape[1]//2
+    center_row = image.shape[0]//2
+    print("Center col " + str(center_col))
+    print("Center row " + str(center_row))
+    start_col = findCropCol(image, center_col, -1, center_col//2,)
+    end_col = findCropCol(image, center_col, 1, center_col//2)
+    print("Start col " + str(start_col))
+    print("End col " + str(end_col))
+    result = np.zeros((image.shape[0],end_col-start_col))
+    result[:,:] = image[:,start_col:end_col]
+    return result
 
-    imageBWarped = cv2.warpPerspective(imageB, H, (imageA.shape[1] * 2, imageA.shape[0]))
-    result = np.zeros((imageA.shape[0], 2 * imageA.shape[1], imageA.shape[2]))
-    print(result.shape)
-    intersect_points = []
-
-    for i in range(imageA.shape[0]):
-        has_intersected = False
-        for j in range(imageA.shape[1]):
-            if (imageBWarped[i][j][0] != 0):
-                if not has_intersected:
-                    intersect_points.append((j, i))
-                    has_intersected = True
-            for k in range(imageA.shape[2]):
-                if (imageBWarped[i][j][k] != 0):
-                    result[i][j][k] = imageA[i][j][k] / 2 + imageBWarped[i][j][k] / 2
-                else:
-                    result[i][j][k] = imageA[i][j][k]
-
-    for i in range(imageA.shape[0]):
-        for j in range(imageA.shape[1], imageBWarped.shape[1]):
-            if (j == imageA.shape[1] and imageBWarped[i][j][0] != 0):
-                intersect_points.append((j, i))
-            for k in range(imageA.shape[2]):
-                result[i][j][k] = imageBWarped[i][j][k]
-
-    imMatches = cv2.drawMatches(imageA, kpA, imageB, kpB, good_matches, None, flags=2)
-    return (result, imMatches, imageBWarped, intersect_points)
 
 
 def getLayoutDetails(layout):
@@ -501,7 +494,8 @@ def smoothIntersection(image, intersectpoints, k_size):
 def main():
     # MACEWAN IMAGES
     images = []
-    mode = 4
+    mode = 1
+
     if mode == 0:
         im1 = cv2.imread('images/macew1.jpg')
         im2 = cv2.imread('images/macew3.jpg')
@@ -511,7 +505,7 @@ def main():
         for i in range(len(images)):
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
         img_colour = 'rgb'
-
+    
     if mode == 1:
         # BUDAPEST MAP IMAGES
         im1 = cv2.imread('images/budapest1.jpg')
@@ -522,11 +516,12 @@ def main():
         im6 = cv2.imread('images/budapest6.jpg')
         images = [im4, im5, im2, im6, im1, im3]
 
-        # layout = [(1, 0), (1, 1), (0, 1), (1, 2), (0, 0), (0, 2)]
+    # layout = [(1, 0), (1, 1), (0, 1), (1, 2), (0, 0), (0, 2)]
 
         for i in range(len(images)):
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
         img_colour = 'gray'
+    
 
     if mode == 2:
         # # BOAT IMAGES - WARNING: takes a long time to run!
@@ -540,7 +535,7 @@ def main():
         # layout = [(0,1), (0,4), (0,0), (0,2), (0,5), (0,3)]
         for i in range(len(images)):
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
-        img_colour = 'gray'
+        img_colour = 'rgb'
 
     if mode == 3:
         im1 = cv2.imread('images/seoul1.jpg')
@@ -554,6 +549,9 @@ def main():
     layout = createImageAlignments(images)
     print(layout)
     result = panoram(images, layout, img_colour, 1)
+    # result = cv2.imread('./Budapest.png')
+    # result = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
+    result = autoCropper(result)
     result = np.uint8(result)
     plt.figure(figsize=(15, 10))
 
@@ -565,61 +563,6 @@ def main():
     plt.xticks([]), plt.yticks([])
     plt.title("It's Pantastic!")
     plt.show()
-
-    # imageA = cv2.imread('images/macew1.jpg')
-    # imageB = cv2.imread('images/macew7.jpg')
-
-    # imageA = cv2.cvtColor(imageA, cv2.COLOR_BGR2RGB)
-    # imageB = cv2.cvtColor(imageB, cv2.COLOR_BGR2RGB)
-    # result,imMatches,imageBWarped,intersectPoints = stitchOLD(imageA, imageB, 0)
-
-    # LEGACY CODE - SHOWING MATCHES, PRE-STICHED PROJECTIONS - FOR REFERENCE MAY BE USEFUL IN DEBUGGING
-    '''
-    plt.subplot(2,1,1)
-    plt.imshow(im1, 'gray')
-    plt.subplot(2,1,2)
-    plt.imshow(imageBWarped, 'gray')
-    plt.show
-    '''
-
-    '''
-    plt.figure(figsize=(15, 10))
-    plt.subplot(1,2,1)
-    plt.imshow(im1,'gray')
-    plt.xticks([]), plt.yticks([])
-    plt.title("image 1")
-    plt.subplot(1,2,2)
-    plt.imshow(im2,'gray')
-    plt.xticks([]), plt.yticks([])
-    plt.title("image 2")
-    plt.show()
-    '''
-
-    '''
-    plt.figure(figsize=(15, 10))
-    plt.imshow(imMatches)
-    plt.xticks([]), plt.yticks([])
-    plt.title("Matches")
-    plt.show()
-    '''
-
-    '''
-    #result = cv2.cvtColor(np.float32(result), cv2.COLOR_GRAY2BGR)
-    plt.figure(figsize=(15, 10))
-    plt.subplot(2,1,1)
-
-    plt.imshow(result.astype(np.uint8),'gray')
-    plt.xticks([]), plt.yticks([])
-    plt.title("Panorama")
-    #plt.show()
-    resultSmooth = smoothIntersection(result, intersectPoints, 3)
-    plt.subplot(2,1,2)
-    plt.imshow(resultSmooth.astype(np.uint8),'gray')
-    plt.xticks([]), plt.yticks([])
-    plt.title("Panorama - Smoothed")
-    plt.show()
-    '''
-
 
 ###############################################################################
 if __name__ == "__main__":
