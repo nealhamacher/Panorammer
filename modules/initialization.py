@@ -35,6 +35,7 @@ def initResult(layout_h, layout_w, image, colour_type):
     base_width = image.shape[1]
     result_width = base_width * (layout_w + 1)
     result_height = base_height * (layout_h + 1)
+    
     if (colour_type == 'rgb'):
         result = np.zeros((result_height, result_width, 3))
     else:
@@ -55,8 +56,9 @@ def placeCenterImage(result, img_center, layout_pt_c, colour_type):
     end_row = img_center.shape[0] + start_row
     start_col = img_center.shape[1] * layout_pt_c[1]
     end_col = img_center.shape[1] + start_col
+    
     if colour_type == "rgb":
-        result[start_row:end_row, start_col:end_col, 0:3] = img_center
+        result[start_row:end_row, start_col:end_col, :] = img_center
     else:
         result[start_row:end_row, start_col:end_col] = img_center
     return result

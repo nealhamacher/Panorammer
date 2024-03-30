@@ -1,15 +1,18 @@
 import cv2
 import numpy as np
 from modules.matching import detectAndDescribe, matchKeypoints
+from modules.blendingPoisson import blendingPoisson
+from modules.blendingLaplacianPyramid import blendLaplacianPyramid
 
 ###
 # Purpose: Stiches an image onto the final panorama image (colour images)
 # Inputs: result - The final panorama image
 #         image - The image to stitch
 #         matchType - feature matching type, 0 = brute force 1 = k-nearest neighbours
+#         blending - type of image blending to use, 0 = none, 1 = Poisson
 # Returns: The result with the image stitched onto it
 ###
-def stitchColour(result, image, matchType):
+def stitchColour(result, image, matchType=1, blending=0):
     # kpA, fA = detectAndDescribe(np.uint8(result))
     # kpB, fB = detectAndDescribe(image)
     kpA, fA = detectAndDescribe(cv2.cvtColor(np.uint8(result), cv2.COLOR_RGB2GRAY))
@@ -18,17 +21,25 @@ def stitchColour(result, image, matchType):
     _, H, _, _ = matchKeypoints(kpA, kpB, fA, fB, matchType)
 
     imageWarped = cv2.warpPerspective(image, H, (result.shape[1], result.shape[0]))
-    intersect_points = []
+    
+    if blending == 2:
+        result = blendLaplacianPyramid(imageWarped, result)
 
-    for i in range(result.shape[0]):
-        has_intersected = False
-        for j in range(result.shape[1]):
-            for k in range(result.shape[2]):
-                if (imageWarped[i][j][k] != 0 and result[i][j][k] == 0):
-                    if not has_intersected:
-                        intersect_points.append((j, i))
-                        has_intersected = True
-                    result[i][j][k] = imageWarped[i][j][k]
+    elif blending == 1:
+        result = blendingPoisson(imageWarped, result)
+        
+    else:
+        intersect_points = []
+        for i in range(result.shape[0]):
+            has_intersected = False
+            for j in range(result.shape[1]):
+                for k in range(result.shape[2]):
+                    if (imageWarped[i][j][k] != 0 and result[i][j][k] == 0):
+                        if not has_intersected:
+                            intersect_points.append((j, i))
+                            has_intersected = True
+                        result[i][j][k] = imageWarped[i][j][k]     
+
     return result
 
 
@@ -39,7 +50,7 @@ def stitchColour(result, image, matchType):
 #         matchType - feature matching type, 0 = brute force 1 = k-nearest neighbours
 # Returns: The result with the image stitched onto it
 ###
-def stitchGrey(result, image, match_type):
+def stitchGrey(result, image, match_type, blending=0):
     kpA, fA = detectAndDescribe(np.uint8(result))
     kpB, fB = detectAndDescribe(image)
     # good_matches, H, temp1, temp2 = matchKeypoints(kpA, kpB, fA, fB, match_type)
@@ -48,12 +59,21 @@ def stitchGrey(result, image, match_type):
     imageWarped = cv2.warpPerspective(image, H, (result.shape[1], result.shape[0]))
     intersect_points = []
 
-    for i in range(result.shape[0]):
-        has_intersected = False
-        for j in range(result.shape[1]):
-            if (imageWarped[i][j] != 0 and result[i][j] == 0):
-                if not has_intersected:
-                    intersect_points.append((j, i))
-                    has_intersected = True
-                result[i][j] = imageWarped[i][j]
+    print(imageWarped.shape)
+    print(result.shape)
+    if blending == 2:
+        result = blendLaplacianPyramid(imageWarped, result)
+    
+    elif blending == 1:
+        result = blendingPoisson(imageWarped, result)
+    
+    else:
+        for i in range(result.shape[0]):
+            has_intersected = False
+            for j in range(result.shape[1]):
+                if (imageWarped[i][j] != 0 and result[i][j] == 0):
+                    if not has_intersected:
+                        intersect_points.append((j, i))
+                        has_intersected = True
+                    result[i][j] = imageWarped[i][j]
     return result

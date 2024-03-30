@@ -16,15 +16,23 @@ from modules.cropping import autoCropper
 #         match_type: 0 for brute force, 1 for k-nearest neighbours
 # Returns: Panorama image
 ###
-def panoram(images, layout, colour_type, match_type):
+def panoram(images, colour_type, layout=None, match_type=1, blend_type=0):
     # Check for valid colour type (rgb and grayscale only supported right now)
     if colour_type not in ['rgb', 'gray', 'grey']:
         raise ValueError("Invalid colour_type")
+    if match_type not in [0,1]:
+        raise ValueError("Invalid match_type")
+    if blend_type not in [0,1,2]:
+        raise ValueError("Invalid blend_type")
+    
     if colour_type == 'rgb':
         stitchFunction = stitchColour
     else:
         stitchFunction = stitchGrey
 
+    if layout==None:
+        layout = createImageAlignments(images)
+    
     # Find number of images wide, high, and center image in layout graph
     # Use these to initalize result canvas and place center image
     layout_w, layout_h, layout_pt_c = getLayoutDetails(layout)
@@ -44,63 +52,67 @@ def panoram(images, layout, colour_type, match_type):
         layout_pt = (layout_pt_c[0], i)
         idx = layout.index(layout_pt)
         img = images[idx]
-        result = stitchFunction(result, img, match_type)
+        result = stitchFunction(result, img, match_type, blend_type)
 
     # Stich images to right of center
     for i in range(first_right, layout_w + 1, 1):
         layout_pt = (layout_pt_c[0], i)
         idx = layout.index(layout_pt)
         img = images[idx]
-        result = stitchFunction(result, img, match_type)
+        result = stitchFunction(result, img, match_type, blend_type)
 
     # Stitch images above center
     for i in range(first_above, -1, -1):
         layout_pt = (i, layout_pt_c[1])
         idx = layout.index(layout_pt)
         img = images[idx]
-        result = stitchFunction(result, img, match_type)
+        result = stitchFunction(result, img, match_type, blend_type)
         for j in range(first_left, -1, -1):
             layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
-            result = stitchFunction(result, img, match_type)
+            result = stitchFunction(result, img, match_type, blend_type)
         for j in range(first_right, layout_w + 1, 1):
             layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
-            result = stitchFunction(result, img, match_type)
+            result = stitchFunction(result, img, match_type, blend_type)
 
     # Stitch images below center
     for i in range(first_below, layout_h + 1, 1):
         layout_pt = (i, layout_pt_c[1])
         idx = layout.index(layout_pt)
         img = images[idx]
-        result = stitchFunction(result, img, match_type)
+        result = stitchFunction(result, img, match_type, blend_type)
         for j in range(first_left, -1, -1):
             layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
-            result = stitchFunction(result, img, match_type)
+            result = stitchFunction(result, img, match_type, blend_type)
         for j in range(first_right, layout_w + 1, 1):
             layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
-            result = stitchFunction(result, img, match_type)
+            result = stitchFunction(result, img, match_type, blend_type)
+
+    #Crop panorama
+    result = autoCropper(result)
 
     return result
 
 
 def main():
-    # MACEWAN IMAGES
     images = []
-    mode = 1
+    mode = 0
+    layout = None
 
+    # MacEwan Images
     if mode == 0:
         im1 = cv2.imread('images/macew1.jpg')
         im2 = cv2.imread('images/macew3.jpg')
         im3 = cv2.imread('images/macew4.jpg')
         images = [im2, im1, im3]
-        # layout = [(0,1),(0,0),(0,2)]
+        layout = [(0,1),(0,0),(0,2)]
         for i in range(len(images)):
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
         img_colour = 'rgb'
@@ -151,16 +163,10 @@ def main():
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
         img_colour = 'gray'
 
-    layout = createImageAlignments(images)
-    print(layout)
-    result = panoram(images, layout, img_colour, 1)
-    # result = cv2.imread('./Budapest.png')
-    # result = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
-    result = autoCropper(result)
+    result = panoram(images, img_colour, layout, 1, 2)
     result = np.uint8(result)
     plt.figure(figsize=(15, 10))
 
-    print(result.ndim)
     if (result.ndim == 2):
         plt.imshow(result, 'gray')  # FOR GRAYSCALE IMAGES
     elif (result.ndim == 3):
