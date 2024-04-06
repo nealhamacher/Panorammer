@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from modules.layout import createImageAlignments
 from modules.initialization import getLayoutDetails, initResult, placeCenterImage
-from modules.stitching import stitchColour, stitchGrey
+from modules.stitching import stitch
 from modules.cropping import autoCropper
 
 
@@ -18,18 +18,13 @@ from modules.cropping import autoCropper
 ###
 def panoram(images, colour_type, layout=None, match_type=1, blend_type=0):
     # Check for valid colour type (rgb and grayscale only supported right now)
-    if colour_type not in ['rgb', 'gray', 'grey']:
-        raise ValueError("Invalid colour_type")
+    if colour_type not in ['rgb', 'gray']:
+        raise ValueError("Invalid colour_type ('rgb' or 'gray' accepted)")
     if match_type not in [0,1]:
-        raise ValueError("Invalid match_type")
+        raise ValueError("Invalid match_type (0 or 1 accepted)")
     if blend_type not in [0,1,2]:
-        raise ValueError("Invalid blend_type")
+        raise ValueError("Invalid blend_type (0, 1, or 2 accepted)")
     
-    if colour_type == 'rgb':
-        stitchFunction = stitchColour
-    else:
-        stitchFunction = stitchGrey
-
     if layout==None:
         layout = createImageAlignments(images)
     
@@ -52,48 +47,48 @@ def panoram(images, colour_type, layout=None, match_type=1, blend_type=0):
         layout_pt = (layout_pt_c[0], i)
         idx = layout.index(layout_pt)
         img = images[idx]
-        result = stitchFunction(result, img, match_type, blend_type)
+        result = stitch(result, img, colour_type, match_type, blend_type)
 
     # Stich images to right of center
     for i in range(first_right, layout_w + 1, 1):
         layout_pt = (layout_pt_c[0], i)
         idx = layout.index(layout_pt)
         img = images[idx]
-        result = stitchFunction(result, img, match_type, blend_type)
+        result = stitch(result, img, colour_type, match_type, blend_type)
 
     # Stitch images above center
     for i in range(first_above, -1, -1):
         layout_pt = (i, layout_pt_c[1])
         idx = layout.index(layout_pt)
         img = images[idx]
-        result = stitchFunction(result, img, match_type, blend_type)
+        result = stitch(result, img, colour_type, match_type, blend_type)
         for j in range(first_left, -1, -1):
             layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
-            result = stitchFunction(result, img, match_type, blend_type)
+            result = stitch(result, img, colour_type, match_type, blend_type)
         for j in range(first_right, layout_w + 1, 1):
             layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
-            result = stitchFunction(result, img, match_type, blend_type)
+            result = stitch(result, img, colour_type, match_type, blend_type)
 
     # Stitch images below center
     for i in range(first_below, layout_h + 1, 1):
         layout_pt = (i, layout_pt_c[1])
         idx = layout.index(layout_pt)
         img = images[idx]
-        result = stitchFunction(result, img, match_type, blend_type)
+        result = stitch(result, img, colour_type, match_type, blend_type)
         for j in range(first_left, -1, -1):
             layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
-            result = stitchFunction(result, img, match_type, blend_type)
+            result = stitch(result, img, colour_type, match_type, blend_type)
         for j in range(first_right, layout_w + 1, 1):
             layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
-            result = stitchFunction(result, img, match_type, blend_type)
+            result = stitch(result, img, colour_type, match_type, blend_type)
 
     #Crop panorama
     result = autoCropper(result)
@@ -163,7 +158,12 @@ def main():
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
         img_colour = 'gray'
 
-    result = panoram(images, img_colour, layout, 1, 2)
+    result = panoram(
+        images = images, 
+        colour_type = img_colour, 
+        layout = layout, 
+        match_type = 1, 
+        blend_type = 0)
     result = np.uint8(result)
     plt.figure(figsize=(15, 10))
 

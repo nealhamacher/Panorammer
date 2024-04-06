@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import cv2
 
 
+# Image blending using Poisson Blending and openCV seamless cloning
+# Taken from https://learnopencv.com/seamless-cloning-using-opencv-python-cpp/
+# Not used in final project
 def blendingPoisson(source, destination):
   # create an all "White" mask: 255, if black mask is 0
   mask = np.zeros(source.shape, source.dtype) 
@@ -28,5 +31,5 @@ def blendingPoisson(source, destination):
   cv2.waitKey()
   center = (height//2, width//2)
   # using built-in funtion `cv2.seamlessClone` to acommpulish Poisson Image
-  blended = cv2.seamlessClone(cv2.cvtColor(source, cv2.COLOR_RGB2BGR), cv2.cvtColor(destination, cv2.COLOR_RGB2BGR), mask, center, 1) # cv::MIXED_CLONE = 2
+  blended = cv2.seamlessClone(source, destination, mask, center, 1) # cv::MIXED_CLONE = 2
   return blended

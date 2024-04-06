@@ -1,6 +1,9 @@
 import cv2 as cv
 import numpy as np
  
+# Code for blending images using Laplacian Pyramids
+# By Yunting Chu - taken from https://github.com/twyunting/Laplacian-Pyramids
+# Not used in final project
 def blendLaplacianPyramid(A, B):
     
     # generate Gaussian pyramid for A

@@ -11,7 +11,7 @@ import numpy as np
 #        axis - 0 for x (horizontal/column), 1 for y (vertical/row)
 # Return: the index to crop at
 ###
-def findCropIdx(image, idx, delta, direction, axis):
+def __findCropIdx(image, idx, delta, direction, axis):
     # Base Case - Change from last iteration was 1 or 0
     if delta == 1:
         return idx
@@ -41,7 +41,7 @@ def findCropIdx(image, idx, delta, direction, axis):
     else:
         new_idx = idx + (-direction * delta)
     new_delta = delta//2
-    return (findCropIdx(image, new_idx, new_delta, direction, axis))
+    return (__findCropIdx(image, new_idx, new_delta, direction, axis))
     
 ###
 # Purpose: Automatically crops a panorama image to cut off the black areas 
@@ -66,16 +66,6 @@ def autoCropper(image):
     end_col = None
 
     # Test if initial and final rows/columns have image pixels
-    # for column in range(0, crop_img.shape[1]):
-    #     if crop_img[0, column] != 0:
-    #         start_row = 0
-    #     if crop_img[crop_img.shape[0]-1, column] != 0:
-    #         end_row = crop_img.shape[0]-1
-    # for row in range(0, crop_img.shape[0]):
-    #     if crop_img[row, 0] != 0:
-    #         start_col = 0
-    #     if crop_img[row, crop_img.shape[1]-1] != 0:
-    #         end_col = crop_img.shape[1]-1
     if np.any(crop_img[0, :]):
         start_row = 0
     if np.any(crop_img[crop_img.shape[0]-1, :]):
@@ -88,18 +78,18 @@ def autoCropper(image):
     
     # Calculate first and last image rows/columns (if not initial and final)
     if start_row == None:   
-        start_row = findCropIdx(image = crop_img, idx = center_row, 
-                                delta = center_row//2, direction = -1, axis = 0)
+        start_row = __findCropIdx(image = crop_img, idx = center_row, 
+                                  delta = center_row//2, direction = -1, axis = 0)
     if end_row == None:
-        end_row = findCropIdx(image = crop_img, idx = center_row, 
-                              delta = center_row//2, direction = 1, axis = 0)
+        end_row = __findCropIdx(image = crop_img, idx = center_row, 
+                                delta = center_row//2, direction = 1, axis = 0)
     
     if start_col == None:
-        start_col = findCropIdx(image = crop_img, idx = center_col, 
-                                delta = center_col//2, direction = -1, axis=1)
+        start_col = __findCropIdx(image = crop_img, idx = center_col, 
+                                  delta = center_col//2, direction = -1, axis=1)
     if end_col == None: 
-        end_col = findCropIdx(image = crop_img, idx = center_col, 
-                              delta = center_col//2, direction = 1, axis=1)
+        end_col = __findCropIdx(image = crop_img, idx = center_col, 
+                                delta = center_col//2, direction = 1, axis=1)
 
     # Create cropped cropped image
     if image.ndim == 3:
