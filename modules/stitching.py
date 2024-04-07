@@ -30,10 +30,10 @@ def __stitchGray(result, image, match_type):
 # Purpose: Stiches an image onto the final panorama image (colour images). Does
 #          not blend the images (takes pixel value from result where the images)
 #          overlap
-# Inputs: result - The final panorama image
+# Inputs: result - The existing panorama image
 #         image - The image to stitch
 #         match_type - feature matching type, 0 = brute force 1 = k-nearest neighbours
-#         Returns: The result with the image stitched onto it
+# Returns: The result with the image stitched onto it
 ###
 def __stitchColour(result, image, matchType):
     kpA, fA = detectAndDescribe(cv2.cvtColor(np.uint8(result), cv2.COLOR_RGB2GRAY))
@@ -50,7 +50,14 @@ def __stitchColour(result, image, matchType):
 
     return result
 
-
+###
+# Purpose: Stiches an image onto the final panorama image (grayscale images).
+#          Where the images overlap, takes the intensity of the two images 
+# Inputs: result - The existing panorama image
+#         image - The image to stich onto the result
+#         matchType - feature matching type, 0 = brute force 1 = k-nearest neighbours
+# Returns: The results with the image stitched onto it
+###
 def __stitchGrayAvg(result, image, match_type):
     kpA, fA = detectAndDescribe(np.uint8(result))
     kpB, fB = detectAndDescribe(image)
@@ -69,7 +76,14 @@ def __stitchGrayAvg(result, image, match_type):
 
     return result
 
-
+###
+# Purpose: Stiches an image onto the final panorama image (colour images).
+#          Where the images overlap, takes the intensity of the two images 
+# Inputs: result - The existing panorama image
+#         image - The image to stich onto the result
+#         matchType - feature matching type, 0 = brute force 1 = k-nearest neighbours
+# Returns: The results with the image stitched onto it
+###
 def __stitchColourAvg(result, image, matchType):
     kpA, fA = detectAndDescribe(cv2.cvtColor(np.uint8(result), cv2.COLOR_RGB2GRAY))
     kpB, fB = detectAndDescribe(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY))
@@ -88,12 +102,18 @@ def __stitchColourAvg(result, image, matchType):
 
     return result
 
-
+###
+# Purpose: Find the left edge columns where two images overlap
+# Inputs: result and imageWarped - the two images
+# Returns: dictionary, keys are rows, and values are array showing column at 
+#          left edge, and what is to the left of the edges (result, imageWarped, 
+#          or None for no image)
+###
 def __leftEdges(result, imageWarped):
     edgePixels = {}
 
-    n_rows = result.shape[0]
-    n_cols = result.shape[1]
+    n_rows = img1.shape[0]
+    n_cols = img1.shape[1]
 
     #Grayscale images
     if result.ndim == 2:
@@ -130,6 +150,13 @@ def __leftEdges(result, imageWarped):
     return edgePixels
 
 
+###
+# Purpose: Find the right edge columns where two images overlap
+# Inputs: result and imageWarped - the two images
+# Returns: dictionary, keys are rows, and values are array showing column at
+#          right edge, and what is to the right of the edges (result, 
+#          imageWarped, or None for no image)
+###
 def __rightEdges(result, imageWarped):
     edgePixels = {}
 
@@ -169,6 +196,13 @@ def __rightEdges(result, imageWarped):
     return edgePixels
 
 
+###
+# Purpose: Find the top edge rows where two images overlap
+# Inputs: result and imageWarped - the two images
+# Returns: dictionary, keys are columns, and values are array showing row at top 
+#          top edge, and what is above the edges (result, imageWarped, or None 
+#          [for no image])
+###
 def __topEdges(result, imageWarped):
     edgePixels = {}
 
@@ -207,6 +241,13 @@ def __topEdges(result, imageWarped):
     return edgePixels
 
 
+###
+# Purpose: Find the bottom edge rows where two images overlap
+# Inputs: result and imageWarped - the two images
+# Returns: dictionary, keys are columns, and values are array showing row at
+#          bottom edge, and what is below of the edges (result, imageWarped, or 
+#          None for no image)
+###
 def __bottomEdges(result, imageWarped):
     edgePixels = {}
 
@@ -244,6 +285,7 @@ def __bottomEdges(result, imageWarped):
                     break
     return edgePixels
 
+
 ###
 # Purpose: Determines the weighted blended pixel in 1 dimension
 # Inputs: resultPixel - a pixel in one image
@@ -276,9 +318,9 @@ def __weightPixel(resultPixel, imgPixel, startInfo, endInfo, location):
     # Case 4: start and end is image - opposite of case 3
     elif (startInfo[1] == 'image' and endInfo[1] == 'image'):
         if weight >= 0.5:
-            weightedPixel = (weight * resultPixel) + ((1-weight) * imgPixel)
+            weightedPixel = (weight * imgPixel) + ((1-weight) * resultPixel)
         else: 
-            weightedPixel = ((1-weight) * resultPixel) + (weight * imgPixel)
+            weightedPixel = ((1-weight) * imgPixel) + (weight * resultPixel)
 
     # Case 5: start is result and end is nothing - all result at start, 50/50 blend at end
     elif (startInfo[1] == 'result' and endInfo[1] == None):
@@ -301,7 +343,23 @@ def __weightPixel(resultPixel, imgPixel, startInfo, endInfo, location):
 
 ###
 # Purpose: Blends a pixel that overlaps in two images
-# 
+# Inputs: resultPixel - pixel from the first image
+#         imgPixel - pixel from the second image
+#         leftInfo - column of the first overlapping pixel in the two images to
+#                    left of the blended pixel and which image (if any) is to 
+#                    the left of that
+#         rightInfo - column of the first overlapping pixel in the two images to
+#                     right of the blended pixel and which image (if any) is to 
+#                     the right of that
+#         topInfo - row of the first overlapping pixel in the two images above
+#                   the blended pixel and which image (if any) is above that
+#         bottomInfo - row of the first overlapping pixel in the two images 
+#                      below the blended pixel and which image (if any) is 
+#                      below that
+#         row - row of the original images the blended pixel is in
+#         column - column of the original images the blended pixel is in
+# Returns: the blended pixel
+###
 def __blendPixel(resultPixel, imgPixel, leftInfo, rightInfo, topInfo, bottomInfo, row, col):
     # Images overlay perfectly - take average of pixel intensities
     if (topInfo[1] == None and bottomInfo[1] == None and leftInfo[1] == None and rightInfo[1] == None):
@@ -322,7 +380,15 @@ def __blendPixel(resultPixel, imgPixel, leftInfo, rightInfo, topInfo, bottomInfo
         blendedPixel = (horizontalIntensity + verticalIntensity) // 2
     return blendedPixel
 
-
+###
+# Purpose: Stiches an image onto the final panorama image (grayscale images).
+#          Where the images overlap, uses a linear weighting to blend the two 
+#          images together
+# Inputs: result - The existing panorama image
+#         image - The image to stich onto the result
+#         matchType - feature matching type, 0 = brute force 1 = k-nearest neighbours
+# Returns: The results with the image stitched onto it
+###
 def __stitchGrayWeighted(result, image, match_type):
     kpA, fA = detectAndDescribe(np.uint8(result))
     kpB, fB = detectAndDescribe(image)
@@ -353,6 +419,15 @@ def __stitchGrayWeighted(result, image, match_type):
     return result
 
 
+###
+# Purpose: Stiches an image onto the final panorama image (colour images).
+#          Where the images overlap, uses a linear weighting to blend the two 
+#          images together
+# Inputs: result - The existing panorama image
+#         image - The image to stich onto the result
+#         matchType - feature matching type, 0 = brute force 1 = k-nearest neighbours
+# Returns: The results with the image stitched onto it
+###
 def __stitchColourWeighted(result, image, match_type):
     kpA, fA = detectAndDescribe(cv2.cvtColor(np.uint8(result), cv2.COLOR_RGB2GRAY))
     kpB, fB = detectAndDescribe(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY))

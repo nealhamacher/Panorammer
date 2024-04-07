@@ -12,7 +12,6 @@ from modules.cropping import autoCropper
 # Params: images, a list of images of same type (height/width/colourscheme)
 #         layout: paired list to images, entries show [row, column] of image 
 #                 if no layout is passed, layout will be generated automatically
-#         colour_type: cv2 colour scheme of image (rgb or grayscale)
 #         match_type: 0 for brute force, 1 for k-nearest neighbours
 #         blend_type: blending to use in areas where images overlap:
 #                       0 - no blending (pixel values from result where overlap)
@@ -111,7 +110,7 @@ def panoram(images, layout=None, match_type=1, blend_type=0):
 
 def main():
     images = []
-    img_set = 1
+    img_set = 2
     layout = None
 
     # MacEwan Images
@@ -122,7 +121,7 @@ def main():
         images = [im2, im1, im3]
         layout = [(0,1),(0,0),(0,2)]
         for i in range(len(images)):
-            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
     
     if img_set == 1:
         # BUDAPEST MAP IMAGES
@@ -149,10 +148,9 @@ def main():
         im5 = cv2.imread('images/boat5.jpg')
         im6 = cv2.imread('images/boat6.jpg')
         images = [im2, im5, im1, im3, im6, im4]
-        # layout = [(0,1), (0,4), (0,0), (0,2), (0,5), (0,3)]
+        layout = [(0,1), (0,4), (0,0), (0,2), (0,5), (0,3)]
         # for i in range(len(images)):
         #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
-        # img_colour = 'rgb'
         for i in range(len(images)):
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
 
@@ -163,7 +161,6 @@ def main():
         images = [im3, im2, im1]
         # for i in range(len(images)):
         #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
-        # img_colour = 'rgb'
         for i in range(len(images)):
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
 
@@ -182,6 +179,8 @@ def main():
     plt.xticks([]), plt.yticks([])
     plt.title("It's Pantastic!")
     plt.show()
+
+    cv2.imshow("It's Pantastic!", result)
 
 ###############################################################################
 if __name__ == "__main__":
