@@ -29,14 +29,14 @@ def getLayoutDetails(layout):
 #         colour_type - 'rgb' for RGB, 'gray' for grayscale
 # Returns: The result canvas, all entries initalized to zeroes
 ###
-def initResult(layout_h, layout_w, image, colour_type):
+def initResult(layout_h, layout_w, image):
     # Find height and width of one image, use to find overall h, w and initialize
     base_height = image.shape[0]
     base_width = image.shape[1]
     result_width = base_width * (layout_w + 1)
     result_height = base_height * (layout_h + 1)
     
-    if (colour_type == 'rgb'):
+    if image.ndim == 3:
         result = np.zeros((result_height, result_width, 3))
     else:
         result = np.zeros((result_height, result_width))
@@ -51,13 +51,13 @@ def initResult(layout_h, layout_w, image, colour_type):
 #         colour_type - RGB or grayscale
 # Returns: The canvas with the center image placed
 ###
-def placeCenterImage(result, img_center, layout_pt_c, colour_type):
+def placeCenterImage(result, img_center, layout_pt_c):
     start_row = img_center.shape[0] * layout_pt_c[0]
     end_row = img_center.shape[0] + start_row
     start_col = img_center.shape[1] * layout_pt_c[1]
     end_col = img_center.shape[1] + start_col
     
-    if colour_type == "rgb":
+    if img_center.ndim == 3:
         result[start_row:end_row, start_col:end_col, :] = img_center
     else:
         result[start_row:end_row, start_col:end_col] = img_center

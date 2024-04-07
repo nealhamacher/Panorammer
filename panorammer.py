@@ -21,13 +21,20 @@ from modules.cropping import autoCropper
 #                           from edge of overlap, and which image is adjacent)
 # Returns: Panorama image
 ###
-def panoram(images, colour_type, layout=None, match_type=1, blend_type=0):
+def panoram(images, layout=None, match_type=1, blend_type=0):
 
     # Check for valid colour type (rgb and grayscale only supported right now)
-    if colour_type not in ['rgb', 'gray']:
-        raise ValueError("Invalid colour_type ('rgb' or 'gray' accepted)")
+    if images[0].ndim not in [2,3]:
+        raise ValueError("Invalid colour depth")
+    n_dim = images[0].ndim
+
+    for image in images:
+        if image.ndim != n_dim:
+            raise ValueError("All images must be same colour type (gray or colour)")
+    
     if match_type not in [0,1]:
         raise ValueError("Invalid match_type (0 or 1 accepted)")
+    
     if blend_type not in [0,1,2]:
         raise ValueError("Invalid blend_type (0, 1, or 2 accepted)")
     
@@ -39,8 +46,8 @@ def panoram(images, colour_type, layout=None, match_type=1, blend_type=0):
     layout_w, layout_h, layout_pt_c = getLayoutDetails(layout)
     idx_center = layout.index(layout_pt_c)
     img_center = images[idx_center]
-    result = initResult(layout_h, layout_w, img_center, colour_type)
-    result = placeCenterImage(result, img_center, layout_pt_c, colour_type)
+    result = initResult(layout_h, layout_w, img_center)
+    result = placeCenterImage(result, img_center, layout_pt_c)
 
     # Find layout graph indices going left/right/up/down from center
     first_above = layout_pt_c[0] - 1
@@ -53,48 +60,48 @@ def panoram(images, colour_type, layout=None, match_type=1, blend_type=0):
         layout_pt = (layout_pt_c[0], i)
         idx = layout.index(layout_pt)
         img = images[idx]
-        result = stitch(result, img, colour_type, match_type, blend_type)
+        result = stitch(result, img, match_type, blend_type)
 
     # Stich images to right of center
     for i in range(first_right, layout_w + 1, 1):
         layout_pt = (layout_pt_c[0], i)
         idx = layout.index(layout_pt)
         img = images[idx]
-        result = stitch(result, img, colour_type, match_type, blend_type)
+        result = stitch(result, img, match_type, blend_type)
 
     # Stitch images above center
     for i in range(first_above, -1, -1):
         layout_pt = (i, layout_pt_c[1])
         idx = layout.index(layout_pt)
         img = images[idx]
-        result = stitch(result, img, colour_type, match_type, blend_type)
+        result = stitch(result, img, match_type, blend_type)
         for j in range(first_left, -1, -1):
             layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
-            result = stitch(result, img, colour_type, match_type, blend_type)
+            result = stitch(result, img, match_type, blend_type)
         for j in range(first_right, layout_w + 1, 1):
             layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
-            result = stitch(result, img, colour_type, match_type, blend_type)
+            result = stitch(result, img, match_type, blend_type)
 
     # Stitch images below center
     for i in range(first_below, layout_h + 1, 1):
         layout_pt = (i, layout_pt_c[1])
         idx = layout.index(layout_pt)
         img = images[idx]
-        result = stitch(result, img, colour_type, match_type, blend_type)
+        result = stitch(result, img, match_type, blend_type)
         for j in range(first_left, -1, -1):
             layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
-            result = stitch(result, img, colour_type, match_type, blend_type)
+            result = stitch(result, img, match_type, blend_type)
         for j in range(first_right, layout_w + 1, 1):
             layout_pt = (i, j)
             idx = layout.index(layout_pt)
             img = images[idx]
-            result = stitch(result, img, colour_type, match_type, blend_type)
+            result = stitch(result, img, match_type, blend_type)
 
     #Crop panorama
     result = autoCropper(result)
@@ -104,21 +111,20 @@ def panoram(images, colour_type, layout=None, match_type=1, blend_type=0):
 
 def main():
     images = []
-    mode = 0
+    img_set = 0
     layout = None
 
     # MacEwan Images
-    if mode == 0:
+    if img_set == 0:
         im1 = cv2.imread('images/macew1.jpg')
         im2 = cv2.imread('images/macew3.jpg')
         im3 = cv2.imread('images/macew4.jpg')
         images = [im2, im1, im3]
         layout = [(0,1),(0,0),(0,2)]
         for i in range(len(images)):
-            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
-        img_colour = 'gray'
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
     
-    if mode == 1:
+    if img_set == 1:
         # BUDAPEST MAP IMAGES
         im1 = cv2.imread('images/budapest1.jpg')
         im2 = cv2.imread('images/budapest2.jpg')
@@ -132,10 +138,9 @@ def main():
 
         for i in range(len(images)):
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
-        img_colour = 'gray'
     
 
-    if mode == 2:
+    if img_set == 2:
         # # BOAT IMAGES - WARNING: takes a long time to run!
         im1 = cv2.imread('images/boat1.jpg')
         im2 = cv2.imread('images/boat2.jpg')
@@ -150,9 +155,8 @@ def main():
         # img_colour = 'rgb'
         for i in range(len(images)):
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
-        img_colour = 'gray'
 
-    if mode == 3:
+    if img_set == 3:
         im1 = cv2.imread('images/seoul1.jpg')
         im2 = cv2.imread('images/seoul2.jpg')
         im3 = cv2.imread('images/seoul3.jpg')
@@ -162,11 +166,9 @@ def main():
         # img_colour = 'rgb'
         for i in range(len(images)):
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
-        img_colour = 'gray'
 
     result = panoram(
         images = images, 
-        colour_type = img_colour, 
         layout = layout, 
         match_type = 1, 
         blend_type = 2)
