@@ -18,9 +18,6 @@ def __stitchGray(result, image, match_type):
 
     imageWarped = cv2.warpPerspective(image, H, (result.shape[1], result.shape[0]))
 
-    print(imageWarped.shape)
-    print(result.shape)
-
     for i in range(result.shape[0]):
         for j in range(result.shape[1]):
             if (imageWarped[i][j] != 0 and result[i][j] == 0):

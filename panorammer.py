@@ -103,7 +103,7 @@ def panoram(images, layout=None, match_type=1, blend_type=0):
             img = images[idx]
             result = stitch(result, img, match_type, blend_type)
 
-    #Crop panorama
+    # Crop panorama
     result = autoCropper(result)
 
     return result
@@ -111,7 +111,7 @@ def panoram(images, layout=None, match_type=1, blend_type=0):
 
 def main():
     images = []
-    img_set = 0
+    img_set = 1
     layout = None
 
     # MacEwan Images
@@ -171,7 +171,7 @@ def main():
         images = images, 
         layout = layout, 
         match_type = 1, 
-        blend_type = 2)
+        blend_type = 0)
     result = np.uint8(result)
     plt.figure(figsize=(15, 10))
 
