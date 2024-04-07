@@ -7,16 +7,22 @@ from modules.stitching import stitch
 from modules.cropping import autoCropper
 
 
-
 ###
 # Purpose: Main panorama making function
 # Params: images, a list of images of same type (height/width/colourscheme)
-#         layout: paired list for images, showing row and column of image in final order
+#         layout: paired list to images, entries show [row, column] of image 
+#                 if no layout is passed, layout will be generated automatically
 #         colour_type: cv2 colour scheme of image (rgb or grayscale)
 #         match_type: 0 for brute force, 1 for k-nearest neighbours
+#         blend_type: blending to use in areas where images overlap:
+#                       0 - no blending (pixel values from result where overlap)
+#                       1 - average blending (takes average of two images)
+#                       2 - weighted blending (weights pixels based on distance
+#                           from edge of overlap, and which image is adjacent)
 # Returns: Panorama image
 ###
 def panoram(images, colour_type, layout=None, match_type=1, blend_type=0):
+
     # Check for valid colour type (rgb and grayscale only supported right now)
     if colour_type not in ['rgb', 'gray']:
         raise ValueError("Invalid colour_type ('rgb' or 'gray' accepted)")
@@ -109,8 +115,8 @@ def main():
         images = [im2, im1, im3]
         layout = [(0,1),(0,0),(0,2)]
         for i in range(len(images)):
-            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
-        img_colour = 'rgb'
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+        img_colour = 'gray'
     
     if mode == 1:
         # BUDAPEST MAP IMAGES
@@ -120,9 +126,9 @@ def main():
         im4 = cv2.imread('images/budapest4.jpg')
         im5 = cv2.imread('images/budapest5.jpg')
         im6 = cv2.imread('images/budapest6.jpg')
+        
         images = [im4, im5, im2, im6, im1, im3]
-
-        # layout = [(1, 0), (1, 1), (0, 1), (1, 2), (0, 0), (0, 2)]
+        layout = [(1, 0), (1, 1), (0, 1), (1, 2), (0, 0), (0, 2)]
 
         for i in range(len(images)):
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
@@ -163,7 +169,7 @@ def main():
         colour_type = img_colour, 
         layout = layout, 
         match_type = 1, 
-        blend_type = 0)
+        blend_type = 2)
     result = np.uint8(result)
     plt.figure(figsize=(15, 10))
 
