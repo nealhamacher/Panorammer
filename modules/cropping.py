@@ -1,43 +1,6 @@
 import cv2
 import numpy as np
 
-'''
-Recursively finds the '''
-def findCropCol(image, column, delta, direction):
-    print(column)
-    if delta == 1 or delta == 0:
-        return column
-    outsideImage = True
-    for row in range(0,image.shape[0]): # If any pixels are non-zero (not all black)
-        if image[row, column] != 0:
-            print("["+str(row)+","+str(column)+"]: "+str(image[row,column]))
-            outsideImage = False
-            break
-    if not outsideImage:
-        new_col = column + (direction * delta)
-    else:
-        new_col = column + (-direction * delta)
-    new_delta = delta//2
-    return (findCropCol(image, new_col, direction, new_delta))
-
-'''
-Recursively finds the first row with image data
-'''
-def findCropRow(image, row, delta, direction):
-    if delta == 1:
-        return row
-    outsideImage = True
-    for column in range(0,image.shape[1]): # If any pixels are non-zero (not all black)
-        if image[row, column] != 0:
-            print("["+str(row)+","+str(column)+"]: "+str(image[row,column]))
-            outsideImage = False
-            break
-    if not outsideImage:
-        new_row = row + (direction * delta)
-    else:
-        new_row = row + (-direction * delta)
-    new_delta = delta//2
-    return (findCropRow(image, new_row, direction, new_delta))
 
 ###
 # Purpose: Determines the row/column index to crop the image at
@@ -45,27 +8,32 @@ def findCropRow(image, row, delta, direction):
 #        idx - the current index to check 
 #        delta - the change in index for the next image
 #        direction - -1 for starting index, +1 for ending index
-#        axis - 1 for x (horizontal/column), 0 for y (vertical/row)
+#        axis - 0 for x (horizontal/column), 1 for y (vertical/row)
 # Return: the index to crop at
 ###
-def findCropIdx(image, idx, delta, direction, axis):
+def __findCropIdx(image, idx, delta, direction, axis):
     # Base Case - Change from last iteration was 1 or 0
     if delta == 1:
         return idx
     
     outsideImage = True
-    # Iterate over rows/columns at index, look for non-zero (non-black) values,
-    # which indicate image pixels in that row/column 
+    # Iterate over rows/columns at index, look for any non-zero (non-black) 
+    # values, which indicate image pixels in that row/column 
     if axis == 0:
-        for row in range(0,image.shape[0]):
-            if image[row, idx] != 0:
-                outsideImage = False
-                break
+        # for column in range(0,image.shape[1]):
+        #     if image[idx, column] != 0:
+        #         outsideImage = False
+        #         break
+        if np.any(image[idx, :]):
+            outsideImage = False
     else:
-        for column in range(0,image.shape[1]):
-            if image[idx, column] != 0:
-                outsideImage = False
-                break
+        # for row in range(0,image.shape[0]):
+        #     if image[row, idx] != 0:
+        #         outsideImage = False
+        #         break
+        if np.any(image[:,idx]):
+            outsideImage = False
+        
     # If we are in image, keep moving in direction by delta to find outside img
     if not outsideImage:
         new_idx = idx + (direction * delta)
@@ -73,7 +41,7 @@ def findCropIdx(image, idx, delta, direction, axis):
     else:
         new_idx = idx + (-direction * delta)
     new_delta = delta//2
-    return (findCropIdx(image, new_idx, new_delta, direction, axis))
+    return (__findCropIdx(image, new_idx, new_delta, direction, axis))
     
 ###
 # Purpose: Automatically crops a panorama image to cut off the black areas 
@@ -97,35 +65,32 @@ def autoCropper(image):
     start_col = None
     end_col = None
 
-    # Test if initial and final rows have image pixels
-    for row in range(0, crop_img.shape[0]):
-        if crop_img[row, 0] != 0:
-            start_col = 0
-        if crop_img[row, crop_img.shape[1]-1] != 0:
-            end_col = crop_img.shape[1]-1
+    # Test if initial and final rows/columns have image pixels
+    if np.any(crop_img[0, :]):
+        start_row = 0
+    if np.any(crop_img[crop_img.shape[0]-1, :]):
+        end_row = crop_img.shape[0]-1   
     
-    for column in range(0, crop_img.shape[1]):
-        if crop_img[0, column] != 0:
-            start_row = 0
-        if crop_img[crop_img.shape[0]-1, column] != 0:
-            end_row = crop_img.shape[0]-1
+    if np.any(crop_img[:, 0]):
+        start_col = 0
+    if np.any(crop_img[:, crop_img.shape[1]-1]):
+        end_col = crop_img.shape[1]-1
     
     # Calculate first and last image rows/columns (if not initial and final)
-    if start_col == None:
-        start_col = findCropIdx(image = crop_img, idx = center_col, 
-                                delta = center_col//2, direction = -1, axis=0)
-    if end_col == None: 
-        end_col = findCropIdx(image = crop_img, idx = center_col, 
-                              delta = center_col//2, direction = 1, axis=0)
-
-
     if start_row == None:   
-        start_row = findCropIdx(image = crop_img, idx = center_row, 
-                                delta = center_row//2, direction = -1, axis = 1)
+        start_row = __findCropIdx(image = crop_img, idx = center_row, 
+                                  delta = center_row//2, direction = -1, axis = 0)
     if end_row == None:
-        end_row = findCropIdx(image = crop_img, idx = center_row, 
-                              delta = center_row//2, direction = 1, axis = 1)
+        end_row = __findCropIdx(image = crop_img, idx = center_row, 
+                                delta = center_row//2, direction = 1, axis = 0)
     
+    if start_col == None:
+        start_col = __findCropIdx(image = crop_img, idx = center_col, 
+                                  delta = center_col//2, direction = -1, axis=1)
+    if end_col == None: 
+        end_col = __findCropIdx(image = crop_img, idx = center_col, 
+                                delta = center_col//2, direction = 1, axis=1)
+
     # Create cropped cropped image
     if image.ndim == 3:
         result = np.zeros((end_row-start_row+1, end_col-start_col+1, image.shape[2]))
