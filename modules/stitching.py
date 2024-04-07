@@ -188,37 +188,60 @@ def __weightPixel(resultPixel, imgPixel, startInfo, endInfo, location):
     distance = endInfo[0] - startInfo[0]
     weight = (location - start) / distance
 
-    #9 cases - start is (result, image, or None) + end is (result, image, or None)
+    # 8 cases - start is (result, image, or None) 
+    #           end is (result, image, or None)
+    #           start is None and end is None covered by checks in blendPixel
 
-    # Case 1: Start is result, end is image, begins all result, ends all image
+    # Case 1: start is result, end is image - begins all result, ends all image
     if (startInfo[1] == 'result' and endInfo[1] == 'image'):
         weightedPixel = ((1 - weight) * resultPixel) + (weight * imgPixel)
 
-    # Case 2: Opposite of case 1 
+    # Case 2: start is image, end is result - opposite of case 1 
     elif (startInfo[1] == 'image' and endInfo[1] == 'result'):
-        distance = endInfo[0] - startInfo[0]
-        weight = (location - start) / distance
         weightedPixel = ((1 - weight) * imgPixel) + (weight * resultPixel)
 
-    else:
-        weightedPixel = (resultPixel + imgPixel) // 2
-    # elif (startInfo[1] == 'result' and endInfo[1] == 'result'):
-    #     weightedPixel = resultPixel
+    # Case 3: start and end is result - all result at edges, 50/50 blend in middle
+    elif (startInfo[1] == 'result' and endInfo[1] == 'result'):
+        if weight >= 0.5:
+            weightedPixel = (weight * resultPixel) + ((1 - weight) * imgPixel)
+        else: 
+            weightedPixel = ((1 - weight) * resultPixel) + (weight * imgPixel)
 
-    # elif (startInfo[1] == 'image' and endInfo[1] == 'image'):
-    #     weightedPixel = imgPixel
+    # Case 4: start and end is image - opposite of case 3
+    elif (startInfo[1] == 'image' and endInfo[1] == 'image'):
+        if weight >= 0.5:
+            weightedPixel = (weight * resultPixel) + ((1 - weight) * imgPixel)
+        else: 
+            weightedPixel = ((1 - weight) * resultPixel) + (weight * imgPixel)
 
-    
-        
+    # Case 5: start is result and end is no image - all result at start, 50/50 blend at end
+    elif (startInfo[1] == 'result' and endInfo[1] == None):
+        weightedPixel = ((1 - (weight / 2)) *  resultPixel) + (weight / 2) * imgPixel
+
+    elif (startInfo[1] == 'image' and endInfo[1] == None):
+        weightedPixel = ((1 - (weight / 2)) *  imgPixel) + (weight / 2) * resultPixel   
+
+    elif (startInfo[1] == None and endInfo[1] == 'result'):
+        weightedPixel = ((1 - (weight / 2)) *  imgPixel) + (weight / 2) * resultPixel 
+
+    elif (startInfo[1] == None and endInfo[1] == 'image'):
+        weightedPixel = ((1 - (weight / 2)) *  resultPixel) + (weight / 2) * imgPixel    
 
     return int(weightedPixel)
 
 
 
 def __blendPixel(resultPixel, imgPixel, leftInfo, rightInfo, topInfo, bottomInfo, row, col):
-    horizontalIntensity = __weightPixel(resultPixel, imgPixel, leftInfo, rightInfo, col)
-    verticalIntensity = __weightPixel(resultPixel, imgPixel, topInfo, bottomInfo, row)
-    blendedPixel = (horizontalIntensity + verticalIntensity) // 2
+    if (topInfo[1] == None and bottomInfo[1] == None and leftInfo[1] == None and rightInfo[1] == None):
+        blendedPixel == resultPixel + imgPixel // 2
+    elif (topInfo[1] == None and bottomInfo[1] == None):
+        blendedPixel = __weightPixel(resultPixel, imgPixel, leftInfo, rightInfo, col)
+    elif (leftInfo[1] == None and rightInfo[1] == None):
+        blendedPixel = __weightPixel(resultPixel, imgPixel, topInfo, bottomInfo, row)
+    else:
+        horizontalIntensity = __weightPixel(resultPixel, imgPixel, leftInfo, rightInfo, col)
+        verticalIntensity = __weightPixel(resultPixel, imgPixel, topInfo, bottomInfo, row)
+        blendedPixel = (horizontalIntensity + verticalIntensity) // 2
     return blendedPixel
 
 
