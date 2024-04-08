@@ -52,7 +52,8 @@ def __stitchColour(result, image, matchType):
 
 ###
 # Purpose: Stiches an image onto the final panorama image (grayscale images).
-#          Where the images overlap, takes the intensity of the two images 
+#          Where the images overlap, blends by taking the average of the pixel
+#          intensities from the two images 
 # Inputs: result - The existing panorama image
 #         image - The image to stich onto the result
 #         matchType - feature matching type, 0 = brute force 1 = k-nearest neighbours
@@ -78,7 +79,8 @@ def __stitchGrayAvg(result, image, match_type):
 
 ###
 # Purpose: Stiches an image onto the final panorama image (colour images).
-#          Where the images overlap, takes the intensity of the two images 
+#          Where the images overlap, blends by taking the average of the pixel
+#          intensities from the two images 
 # Inputs: result - The existing panorama image
 #         image - The image to stich onto the result
 #         matchType - feature matching type, 0 = brute force 1 = k-nearest neighbours
@@ -112,8 +114,8 @@ def __stitchColourAvg(result, image, matchType):
 def __leftEdges(result, imageWarped):
     edgePixels = {}
 
-    n_rows = img1.shape[0]
-    n_cols = img1.shape[1]
+    n_rows = result.shape[0]
+    n_cols = result.shape[1]
 
     #Grayscale images
     if result.ndim == 2:
@@ -272,14 +274,14 @@ def __bottomEdges(result, imageWarped):
     else:
         for j in range(n_cols):
             for i in range(n_rows-1, -1, -1):
-                # Find first pixel where images overlap
                 edgePixels[f'{j}'] = [n_rows-1, None]
+                # Find first pixel where images overlap (non-zero values in any colour)
                 if (np.any(result[i][1][:]) and np.any(imageWarped[i][j][:])):
                     if(i != n_rows-1):
-                        # Pixel to right is all image
+                        # Pixel to right is all image - not all colours zero
                         if (not np.all(result[i+1][j][:])):
                             edgePixels[f'{j}'] = [i, 'image']
-                        # Pixel to left is all result
+                        # Pixel to left is all result - not all colours zero
                         elif (not np.all(imageWarped[i+1][j][:])):
                             edgePixels[f'{j}'] = [i, 'result']
                     break
@@ -294,6 +296,11 @@ def __bottomEdges(result, imageWarped):
 def __weightPixel(resultPixel, imgPixel, startInfo, endInfo, location):
     start = startInfo[0]
     distance = endInfo[0] - startInfo[0]
+    # Cover zero distance - returns result pixel (probably should be dependent)
+    # on what surrounds the pixel
+    if distance == 0:
+        return resultPixel
+    
     weight = (location - start) / distance
 
     # 8 cases - start is (result, image, or None) 
@@ -324,19 +331,27 @@ def __weightPixel(resultPixel, imgPixel, startInfo, endInfo, location):
 
     # Case 5: start is result and end is nothing - all result at start, 50/50 blend at end
     elif (startInfo[1] == 'result' and endInfo[1] == None):
-        weightedPixel = ((1-(weight/2)) *  resultPixel) + ((weight/2) * imgPixel)
+        # weightedPixel = ((1-(weight/2)) *  resultPixel) + ((weight/2) * imgPixel)
+    # Try all results at start, all image at end
+        weightedPixel = ((1 - weight) * resultPixel) + (weight * imgPixel)
 
     # Case 6: start is image and end is nothing - all result at image, 50/50 blend at end
     elif (startInfo[1] == 'image' and endInfo[1] == None):
-        weightedPixel = ((1-(weight/2)) *  imgPixel) + ((weight/2) * resultPixel)  
+        # weightedPixel = ((1-(weight/2)) *  imgPixel) + ((weight/2) * resultPixel)  
+    # Try all image at start, all result at end
+        weightedPixel = ((1 - weight) * imgPixel) + (weight * resultPixel)
 
     # Case 7: start is nothing and end is result - 50/50 blend at start, all result at end
     elif (startInfo[1] == None and endInfo[1] == 'result'):
-        weightedPixel = (((1-weight)/2) * imgPixel) + (((weight+1)/2) * resultPixel)
+        # weightedPixel = (((1-weight)/2) * imgPixel) + (((weight+1)/2) * resultPixel)
+    # Try all image at start, all result at end
+        weightedPixel = ((1 - weight) * imgPixel) + (weight * resultPixel)
 
     # Case 8: start is nothing and end is image - 50/50 blend at start, all image at end
     elif (startInfo[1] == None and endInfo[1] == 'image'):
-        weightedPixel = (((1-weight)/2) * resultPixel) + (((weight+1)/2) * imgPixel)
+        # weightedPixel = (((1-weight)/2) * resultPixel) + (((weight+1)/2) * imgPixel) 
+    # Try all result at start, all image at end
+        weightedPixel = ((1 - weight) * resultPixel) + (weight * imgPixel)
 
     return int(weightedPixel)
 
@@ -443,7 +458,7 @@ def __stitchColourWeighted(result, image, match_type):
     for i in range(result.shape[0]):
         for j in range(result.shape[1]):
             if (np.any(imageWarped[i][j][:])):
-                if (not np.all(result[i][j][:])):
+                if (np.any(result[i][j][:])):
                     leftEdgePixel = edgesLeft[f'{i}']
                     rightEdgePixel = edgesRight[f'{i}']
                     topEdgePixel = edgesTop[f'{j}']
@@ -472,14 +487,14 @@ def __stitchColourWeighted(result, image, match_type):
 # Returns: The stitched together result.
 ###
 def stitch(result, image, match_type=0, blend_type=0):
-    if result.ndim == 3:
+    if result.ndim == 3:  # Colour images
         if blend_type == 2:
             result = __stitchColourWeighted(result, image, match_type)
         elif blend_type == 1:
             result = __stitchColourAvg(result, image, match_type)
         else: 
             result = __stitchColour(result, image, match_type)
-    else: 
+    else:  # Grayscale images
         if blend_type == 2:
             result == __stitchGrayWeighted(result, image, match_type)
         elif blend_type == 1:

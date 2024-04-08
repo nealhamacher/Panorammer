@@ -22,11 +22,12 @@ from modules.cropping import autoCropper
 ###
 def panoram(images, layout=None, match_type=1, blend_type=0):
 
-    # Check for valid colour type (rgb and grayscale only supported right now)
+    # Check for valid colour type type
     if images[0].ndim not in [2,3]:
         raise ValueError("Invalid colour depth")
     n_dim = images[0].ndim
 
+    # Check all images are same colour type (or at least all are colour or all are grey)
     for image in images:
         if image.ndim != n_dim:
             raise ValueError("All images must be same colour type (gray or colour)")
@@ -37,6 +38,7 @@ def panoram(images, layout=None, match_type=1, blend_type=0):
     if blend_type not in [0,1,2]:
         raise ValueError("Invalid blend_type (0, 1, or 2 accepted)")
     
+    # If no layout passed, automatically create one
     if layout==None:
         layout = createImageAlignments(images)
     
@@ -57,16 +59,18 @@ def panoram(images, layout=None, match_type=1, blend_type=0):
     # Stitch images to left of center
     for i in range(first_left, -1, -1):
         layout_pt = (layout_pt_c[0], i)
-        idx = layout.index(layout_pt)
-        img = images[idx]
-        result = stitch(result, img, match_type, blend_type)
+        if layout_pt in layout:
+            idx = layout.index(layout_pt)
+            img = images[idx]
+            result = stitch(result, img, match_type, blend_type)
 
     # Stich images to right of center
     for i in range(first_right, layout_w + 1, 1):
         layout_pt = (layout_pt_c[0], i)
-        idx = layout.index(layout_pt)
-        img = images[idx]
-        result = stitch(result, img, match_type, blend_type)
+        if layout_pt in layout:
+            idx = layout.index(layout_pt)
+            img = images[idx]
+            result = stitch(result, img, match_type, blend_type)
 
     # Stitch images above center
     for i in range(first_above, -1, -1):
@@ -76,31 +80,36 @@ def panoram(images, layout=None, match_type=1, blend_type=0):
         result = stitch(result, img, match_type, blend_type)
         for j in range(first_left, -1, -1):
             layout_pt = (i, j)
-            idx = layout.index(layout_pt)
-            img = images[idx]
-            result = stitch(result, img, match_type, blend_type)
+            if layout_pt in layout:
+                idx = layout.index(layout_pt)
+                img = images[idx]
+                result = stitch(result, img, match_type, blend_type)
         for j in range(first_right, layout_w + 1, 1):
             layout_pt = (i, j)
-            idx = layout.index(layout_pt)
-            img = images[idx]
-            result = stitch(result, img, match_type, blend_type)
+            if layout_pt in layout:
+                idx = layout.index(layout_pt)
+                img = images[idx]
+                result = stitch(result, img, match_type, blend_type)
 
     # Stitch images below center
     for i in range(first_below, layout_h + 1, 1):
         layout_pt = (i, layout_pt_c[1])
-        idx = layout.index(layout_pt)
-        img = images[idx]
-        result = stitch(result, img, match_type, blend_type)
+        if layout_pt in layout:
+            idx = layout.index(layout_pt)
+            img = images[idx]
+            result = stitch(result, img, match_type, blend_type)
         for j in range(first_left, -1, -1):
             layout_pt = (i, j)
-            idx = layout.index(layout_pt)
-            img = images[idx]
-            result = stitch(result, img, match_type, blend_type)
+            if layout_pt in layout:
+                idx = layout.index(layout_pt)
+                img = images[idx]
+                result = stitch(result, img, match_type, blend_type)
         for j in range(first_right, layout_w + 1, 1):
             layout_pt = (i, j)
-            idx = layout.index(layout_pt)
-            img = images[idx]
-            result = stitch(result, img, match_type, blend_type)
+            if layout_pt in layout:
+                idx = layout.index(layout_pt)
+                img = images[idx]
+                result = stitch(result, img, match_type, blend_type)
 
     # Crop panorama
     result = autoCropper(result)
@@ -110,27 +119,27 @@ def panoram(images, layout=None, match_type=1, blend_type=0):
 
 def main():
     images = []
-    img_set = 2
+    img_set = 6
     layout = None
 
     # MacEwan Images
     if img_set == 0:
-        im1 = cv2.imread('images/macew1.jpg')
-        im2 = cv2.imread('images/macew3.jpg')
-        im3 = cv2.imread('images/macew4.jpg')
+        im1 = cv2.imread('images/macewan/macew1.jpg')
+        im2 = cv2.imread('images/macewan/macew3.jpg')
+        im3 = cv2.imread('images/macewan/macew4.jpg')
         images = [im2, im1, im3]
         layout = [(0,1),(0,0),(0,2)]
         for i in range(len(images)):
-            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
     
     if img_set == 1:
         # BUDAPEST MAP IMAGES
-        im1 = cv2.imread('images/budapest1.jpg')
-        im2 = cv2.imread('images/budapest2.jpg')
-        im3 = cv2.imread('images/budapest3.jpg')
-        im4 = cv2.imread('images/budapest4.jpg')
-        im5 = cv2.imread('images/budapest5.jpg')
-        im6 = cv2.imread('images/budapest6.jpg')
+        im1 = cv2.imread('images/budapest/budapest1.jpg')
+        im2 = cv2.imread('images/budapest/budapest2.jpg')
+        im3 = cv2.imread('images/budapest/budapest3.jpg')
+        im4 = cv2.imread('images/budapest/budapest4.jpg')
+        im5 = cv2.imread('images/budapest/budapest5.jpg')
+        im6 = cv2.imread('images/budapest/budapest6.jpg')
         
         images = [im4, im5, im2, im6, im1, im3]
         layout = [(1, 0), (1, 1), (0, 1), (1, 2), (0, 0), (0, 2)]
@@ -141,12 +150,12 @@ def main():
 
     if img_set == 2:
         # # BOAT IMAGES - WARNING: takes a long time to run!
-        im1 = cv2.imread('images/boat1.jpg')
-        im2 = cv2.imread('images/boat2.jpg')
-        im3 = cv2.imread('images/boat3.jpg')
-        im4 = cv2.imread('images/boat4.jpg')
-        im5 = cv2.imread('images/boat5.jpg')
-        im6 = cv2.imread('images/boat6.jpg')
+        im1 = cv2.imread('images/boat/boat1.jpg')
+        im2 = cv2.imread('images/boat/boat2.jpg')
+        im3 = cv2.imread('images/boat/boat3.jpg')
+        im4 = cv2.imread('images/boat/boat4.jpg')
+        im5 = cv2.imread('images/boat/boat5.jpg')
+        im6 = cv2.imread('images/boat/boat6.jpg')
         images = [im2, im5, im1, im3, im6, im4]
         layout = [(0,1), (0,4), (0,0), (0,2), (0,5), (0,3)]
         # for i in range(len(images)):
@@ -155,20 +164,71 @@ def main():
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
 
     if img_set == 3:
-        im1 = cv2.imread('images/seoul1.jpg')
-        im2 = cv2.imread('images/seoul2.jpg')
-        im3 = cv2.imread('images/seoul3.jpg')
+        im1 = cv2.imread('images/seoul/seoul1.jpg')
+        im2 = cv2.imread('images/seoul/seoul2.jpg')
+        im3 = cv2.imread('images/seoul/seoul3.jpg')
         images = [im3, im2, im1]
         # for i in range(len(images)):
         #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
         for i in range(len(images)):
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
 
+    if img_set == 4:
+        im1 = cv2.imread('images/mural1/mural1.jpg')
+        im2 = cv2.imread('images/mural1/mural2.jpg')
+        im3 = cv2.imread('images/mural1/mural3.jpg')
+        im4 = cv2.imread('images/mural1/mural4.jpg')
+        images = [im3, im2, im1, im4]
+        for i in range(len(images)):
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+        # for i in range(len(images)):
+        #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+
+    if img_set == 5:
+        # Auto-layout doesn't run on these
+        im1 = cv2.imread('images/mural2/mural1.jpg')
+        im2 = cv2.imread('images/mural2/mural2.jpg')
+        im3 = cv2.imread('images/mural2/mural3.jpg')
+        im4 = cv2.imread('images/mural2/mural4.jpg')
+        im5 = cv2.imread('images/mural2/mural5.jpg')
+        im6 = cv2.imread('images/mural2/mural6.jpg')
+        images = [im1, im2, im3, im5, im6]
+        layout = [(1,0), (1,1), (1,2), (0,1) , (0,2)]
+        # for i in range(len(images)):
+        #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+        for i in range(len(images)):
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+
+    if img_set == 6:
+        # Auto-layout appears to miss top-right image (ed5)
+        im1 = cv2.imread('images/ed1/ed1.jpg')
+        im2 = cv2.imread('images/ed1/ed2.jpg')
+        im3 = cv2.imread('images/ed1/ed3.jpg')
+        im4 = cv2.imread('images/ed1/ed4.jpg')
+        im5 = cv2.imread('images/ed1/ed5.jpg')
+        im6 = cv2.imread('images/ed1/ed6.jpg')
+        images = [im3, im2, im1, im4, im6, im5]
+        layout = [(0,1),(1,0),(0,0),(1,1),(1,2),(0,2)]
+        for i in range(len(images)):
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+        # for i in range(len(images)):
+        #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+
+    if img_set == 7:
+        im1 = cv2.imread('images/ed2/ed1.jpg')
+        im2 = cv2.imread('images/ed2/ed2.jpg')
+        im3 = cv2.imread('images/ed2/ed3.jpg')
+        images = [im3, im1, im2]
+        for i in range(len(images)):
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+        # for i in range(len(images)):
+        #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+
     result = panoram(
         images = images, 
         layout = layout, 
         match_type = 1, 
-        blend_type = 0)
+        blend_type = 2)
     result = np.uint8(result)
     plt.figure(figsize=(15, 10))
 
@@ -179,8 +239,6 @@ def main():
     plt.xticks([]), plt.yticks([])
     plt.title("It's Pantastic!")
     plt.show()
-
-    cv2.imshow("It's Pantastic!", result)
 
 ###############################################################################
 if __name__ == "__main__":
