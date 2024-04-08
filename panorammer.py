@@ -9,7 +9,7 @@ from modules.cropping import autoCropper
 
 ###
 # Purpose: Main panorama making function
-# Params: images, a list of images of same type (height/width/colourscheme)
+# Params: images: a list of images of same type (height/width/colourscheme)
 #         layout: paired list to images, entries show [row, column] of image 
 #                 if no layout is passed, layout will be generated automatically
 #         match_type: 0 for brute force, 1 for k-nearest neighbours
@@ -119,7 +119,7 @@ def panoram(images, layout=None, match_type=1, blend_type=0):
 
 def main():
     images = []
-    img_set = 6
+    img_set = 0
     layout = None
 
     # MacEwan Images
@@ -149,7 +149,7 @@ def main():
     
 
     if img_set == 2:
-        # # BOAT IMAGES - WARNING: takes a long time to run!
+        # BOAT IMAGES - WARNING: takes a long time to run!
         im1 = cv2.imread('images/boat/boat1.jpg')
         im2 = cv2.imread('images/boat/boat2.jpg')
         im3 = cv2.imread('images/boat/boat3.jpg')
@@ -194,10 +194,10 @@ def main():
         im6 = cv2.imread('images/mural2/mural6.jpg')
         images = [im1, im2, im3, im5, im6]
         layout = [(1,0), (1,1), (1,2), (0,1) , (0,2)]
-        # for i in range(len(images)):
-        #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
         for i in range(len(images)):
-            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+        # for i in range(len(images)):
+        #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
 
     if img_set == 6:
         # Auto-layout appears to miss top-right image (ed5)
@@ -219,6 +219,33 @@ def main():
         im2 = cv2.imread('images/ed2/ed2.jpg')
         im3 = cv2.imread('images/ed2/ed3.jpg')
         images = [im3, im1, im2]
+        for i in range(len(images)):
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+        # for i in range(len(images)):
+        #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+
+    if img_set == 8:
+        im1 = cv2.imread('images/bridge_art2/art1.jpg')
+        im2 = cv2.imread('images/bridge_art2/art2.jpg')
+        im3 = cv2.imread('images/bridge_art2/art3.jpg')
+        im4 = cv2.imread('images/bridge_art2/art4.jpg')
+        im5 = cv2.imread('images/bridge_art2/art5.jpg')
+        images = [im1, im3, im4, im2, im5]
+        for i in range(len(images)):
+            images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+        # for i in range(len(images)):
+        #     images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+
+    if img_set == 9:
+        im1 = cv2.imread('images/bridge_art3/art1.jpg')
+        im2 = cv2.imread('images/bridge_art3/art2.jpg')
+        im3 = cv2.imread('images/bridge_art3/art3.jpg')
+        im4 = cv2.imread('images/bridge_art3/art4.jpg')
+        im5 = cv2.imread('images/bridge_art3/art5.jpg')
+        im6 = cv2.imread('images/bridge_art3/art6.jpg')
+        im7 = cv2.imread('images/bridge_art3/art7.jpg')
+        images = [im5, im7, im6, im4, im2, im1, im3]
+        #layout = [(0,0), (0,1), (0,2), (0,3), (0,4), (0,5), (0,6)]
         for i in range(len(images)):
             images[i] = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
         # for i in range(len(images)):

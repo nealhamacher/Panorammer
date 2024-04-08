@@ -305,7 +305,7 @@ def __weightPixel(resultPixel, imgPixel, startInfo, endInfo, location):
 
     # 8 cases - start is (result, image, or None) 
     #           end is (result, image, or None)
-    #           start is None and end is None covered by checks in blendPixel
+    #           (start is None and end is None covered by checks in blendPixel)
 
     # Case 1: start is result, end is image - begins all result, ends all image
     if (startInfo[1] == 'result' and endInfo[1] == 'image'):
@@ -331,27 +331,27 @@ def __weightPixel(resultPixel, imgPixel, startInfo, endInfo, location):
 
     # Case 5: start is result and end is nothing - all result at start, 50/50 blend at end
     elif (startInfo[1] == 'result' and endInfo[1] == None):
-        # weightedPixel = ((1-(weight/2)) *  resultPixel) + ((weight/2) * imgPixel)
+        weightedPixel = ((1-(weight/2)) *  resultPixel) + ((weight/2) * imgPixel)
     # Try all results at start, all image at end
-        weightedPixel = ((1 - weight) * resultPixel) + (weight * imgPixel)
+        # weightedPixel = ((1 - weight) * resultPixel) + (weight * imgPixel)
 
     # Case 6: start is image and end is nothing - all result at image, 50/50 blend at end
     elif (startInfo[1] == 'image' and endInfo[1] == None):
-        # weightedPixel = ((1-(weight/2)) *  imgPixel) + ((weight/2) * resultPixel)  
+        weightedPixel = ((1-(weight/2)) *  imgPixel) + ((weight/2) * resultPixel)  
     # Try all image at start, all result at end
-        weightedPixel = ((1 - weight) * imgPixel) + (weight * resultPixel)
+        # weightedPixel = ((1 - weight) * imgPixel) + (weight * resultPixel)
 
     # Case 7: start is nothing and end is result - 50/50 blend at start, all result at end
     elif (startInfo[1] == None and endInfo[1] == 'result'):
-        # weightedPixel = (((1-weight)/2) * imgPixel) + (((weight+1)/2) * resultPixel)
+        weightedPixel = (((1-weight)/2) * imgPixel) + (((weight+1)/2) * resultPixel)
     # Try all image at start, all result at end
-        weightedPixel = ((1 - weight) * imgPixel) + (weight * resultPixel)
+        # weightedPixel = ((1 - weight) * imgPixel) + (weight * resultPixel)
 
     # Case 8: start is nothing and end is image - 50/50 blend at start, all image at end
     elif (startInfo[1] == None and endInfo[1] == 'image'):
-        # weightedPixel = (((1-weight)/2) * resultPixel) + (((weight+1)/2) * imgPixel) 
+        weightedPixel = (((1-weight)/2) * resultPixel) + (((weight+1)/2) * imgPixel) 
     # Try all result at start, all image at end
-        weightedPixel = ((1 - weight) * resultPixel) + (weight * imgPixel)
+        # weightedPixel = ((1 - weight) * resultPixel) + (weight * imgPixel)
 
     return int(weightedPixel)
 
