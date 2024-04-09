@@ -12,12 +12,15 @@ from modules.matching import detectAndDescribe, matchKeypoints
 # Returns: The result with the image stitched onto it
 ###
 def __stitchGray(result, image, match_type):
+    # Feature matching
     kpA, fA = detectAndDescribe(np.uint8(result))
     kpB, fB = detectAndDescribe(image)
+    # Find homography between image and result
     _, H, _, _ = matchKeypoints(kpA, kpB, fA, fB, match_type)
-
+    # Warp image into image plane of result using homography
     imageWarped = cv2.warpPerspective(image, H, (result.shape[1], result.shape[0]))
 
+    # If there are image pixels in imageWarped but not result, add imageWarped pixel to result
     for i in range(result.shape[0]):
         for j in range(result.shape[1]):
             if (imageWarped[i][j] != 0 and result[i][j] == 0):
@@ -36,12 +39,15 @@ def __stitchGray(result, image, match_type):
 # Returns: The result with the image stitched onto it
 ###
 def __stitchColour(result, image, matchType):
+    # Feature matching
     kpA, fA = detectAndDescribe(cv2.cvtColor(np.uint8(result), cv2.COLOR_RGB2GRAY))
     kpB, fB = detectAndDescribe(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY))
+    # Find homography between image and result
     _, H, _, _ = matchKeypoints(kpA, kpB, fA, fB, matchType)
-
+    # Warp image into image plane of result using homography
     imageWarped = cv2.warpPerspective(image, H, (result.shape[1], result.shape[0]))
 
+    # If there are image pixels in imageWarped but not result, add imageWarped pixel to result
     for i in range(result.shape[0]):
         for j in range(result.shape[1]):
             for k in range(result.shape[2]):
@@ -66,12 +72,13 @@ def __stitchGrayAvg(result, image, match_type):
 
     imageWarped = cv2.warpPerspective(image, H, (result.shape[1], result.shape[0]))
 
+    # Loop through pixels and blend in areas of overlap
     for i in range(result.shape[0]):
         for j in range(result.shape[1]):
             if (imageWarped[i][j] != 0):
                 if (result[i][j] != 0):
                     result[i][j] = (imageWarped[i][j] + result[i][j]) // 2
-                else:
+                else: # Where image pixel is in image in imageWarped but not result, add pixel to result
                     result[i][j] = imageWarped[i][j]
             # Otherwise imageWarped[i][j] == 0 and result doesn't change
 
@@ -87,19 +94,22 @@ def __stitchGrayAvg(result, image, match_type):
 # Returns: The results with the image stitched onto it
 ###
 def __stitchColourAvg(result, image, matchType):
+    # Feature matching
     kpA, fA = detectAndDescribe(cv2.cvtColor(np.uint8(result), cv2.COLOR_RGB2GRAY))
     kpB, fB = detectAndDescribe(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY))
+    # Find homography
     _, H, _, _ = matchKeypoints(kpA, kpB, fA, fB, matchType)
-
+    # Warp image to the image plane of result using homography
     imageWarped = cv2.warpPerspective(image, H, (result.shape[1], result.shape[0]))
 
+    # Loop through pixels and blend in areas of overlap
     for i in range(result.shape[0]):
         for j in range(result.shape[1]):
             for k in range(result.shape[2]):
                 if (imageWarped[i][j][k] != 0):
                     if (result[i][j][k] != 0):
                         result[i][j][k] = (imageWarped[i][j][k] + result[i][j][k]) // 2
-                    else:
+                    else: # Where image pixel is in image in imageWarped but not result, add pixel to result
                         result[i][j][k] = imageWarped[i][j][k]  
 
     return result
@@ -296,8 +306,8 @@ def __bottomEdges(result, imageWarped):
 def __weightPixel(resultPixel, imgPixel, startInfo, endInfo, location):
     start = startInfo[0]
     distance = endInfo[0] - startInfo[0]
-    # Cover zero distance - returns result pixel (probably should be dependent)
-    # on what surrounds the pixel
+    # Cover zero distance - returns result pixel (probably should be dependent
+    # on what surrounds the pixel? Fairly rare case that only affects single pixel)
     if distance == 0:
         return resultPixel
     
@@ -405,21 +415,26 @@ def __blendPixel(resultPixel, imgPixel, leftInfo, rightInfo, topInfo, bottomInfo
 # Returns: The results with the image stitched onto it
 ###
 def __stitchGrayWeighted(result, image, match_type):
+    # Feature matching
     kpA, fA = detectAndDescribe(np.uint8(result))
     kpB, fB = detectAndDescribe(image)
+    # Match keypoints to find homography between image and result
     _, H, _, _ = matchKeypoints(kpA, kpB, fA, fB, match_type)
 
+    # Warp image to result image plane using homography
     imageWarped = cv2.warpPerspective(image, H, (result.shape[1], result.shape[0]))
 
+    # Find edges of overlapping area
     edgesLeft = __leftEdges(result, imageWarped)
     edgesRight = __rightEdges(result, imageWarped)
     edgesTop = __topEdges(result, imageWarped)
     edgesBottom = __bottomEdges(result, imageWarped)
 
+    # Blend pixels
     for i in range(result.shape[0]):
         for j in range(result.shape[1]):
-            if (imageWarped[i][j]):
-                if (result[i][j] != 0):
+            if (imageWarped[i][j]): # image pixels in imageWarped 
+                if (result[i][j] != 0): # image pixels in result (images overlap)
                     leftEdgePixel = edgesLeft[f'{i}']
                     rightEdgePixel = edgesRight[f'{i}']
                     topEdgePixel = edgesTop[f'{j}']
@@ -428,7 +443,7 @@ def __stitchGrayWeighted(result, image, match_type):
                                                 leftEdgePixel, rightEdgePixel,
                                                 topEdgePixel, bottomEdgePixel,
                                                 i, j)
-                else:
+                else: # No image pixels in result - imageWarped only, add to result
                     result[i][j] = imageWarped[i][j]
 
     return result
@@ -444,26 +459,31 @@ def __stitchGrayWeighted(result, image, match_type):
 # Returns: The results with the image stitched onto it
 ###
 def __stitchColourWeighted(result, image, match_type):
+    # Feature matching
     kpA, fA = detectAndDescribe(cv2.cvtColor(np.uint8(result), cv2.COLOR_RGB2GRAY))
     kpB, fB = detectAndDescribe(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY))
+    # Find homography
     _, H, _, _ = matchKeypoints(kpA, kpB, fA, fB, match_type)
 
+    # Transform image to result plane with homography
     imageWarped = cv2.warpPerspective(image, H, (result.shape[1], result.shape[0]))
 
+    # Find edges
     edgesLeft = __leftEdges(result, imageWarped)
     edgesRight = __rightEdges(result, imageWarped)
     edgesTop = __topEdges(result, imageWarped)
     edgesBottom = __bottomEdges(result, imageWarped)
 
+    # Blend pixels
     for i in range(result.shape[0]):
         for j in range(result.shape[1]):
-            if (np.any(imageWarped[i][j][:])):
-                if (np.any(result[i][j][:])):
+            if (np.any(imageWarped[i][j][:])): # image pixels in imageWarped 
+                if (np.any(result[i][j][:])): # image pixels in result (images overlap)
                     leftEdgePixel = edgesLeft[f'{i}']
                     rightEdgePixel = edgesRight[f'{i}']
                     topEdgePixel = edgesTop[f'{j}']
                     bottomEdgePixel = edgesBottom[f'{j}']
-                    for k in range(result.shape[2]):
+                    for k in range(result.shape[2]): # blend pixels in all colour streams
                         result[i][j][k] = __blendPixel(result[i][j][k], 
                                                        imageWarped[i][j][k], 
                                                        leftEdgePixel, 
@@ -471,7 +491,7 @@ def __stitchColourWeighted(result, image, match_type):
                                                        topEdgePixel, 
                                                        bottomEdgePixel,
                                                        i, j)
-                else:
+                else: # No image pixels in result - imageWarped only, use that
                     result[i][j][:] = imageWarped[i][j][:]
 
     return result
