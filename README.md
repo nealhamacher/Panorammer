@@ -11,7 +11,7 @@ An automatic Panorama stitching tool that orders inspired by the openCV Stitcher
 </ul>  
 
 ## How To Use 
-Import the panoram function from panorammer.py.  This function can be called to generate a panorama, it will return the panorama in openCV numpy array format. This functions takes:
+Import the panoram function from panorammer.py.  This function can be called to generate a panorama, it will return the panorama image in openCV numpy array format. This functions takes as parameters:
 <ol>
   <li>images - a list of images (in openCV numpy array format)</li>
   <li>layout - a paired list to images, with image locations in the panorama as array index (row, column) starting from (0,0). Eg (0,1) is second image in first row, (3,2) is third image in fourth row. If no layout is passed, a layout will automatically be generated</li>
